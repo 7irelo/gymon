@@ -1,0 +1,3 @@
+[submodule "Gymon/vendor/spdlog"]
+    path = Gymon/vendor/spdlog
+    url = https://github.com/gabime/spdlog
