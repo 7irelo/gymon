@@ -32,7 +32,7 @@ To get started with Gymon, follow these steps:
 1. **Clone the Repository:** Clone this repository to your local machine using Git:
 
     ```
-    git clone https://github.com/your-username/gymon.git
+    git clone https://github.com/7irelo/gymon.git
     ```
 
 2. **Build the Engine:** Build Gymon using your preferred build system (e.g., CMake, Makefile). Refer to the documentation provided in the repository for detailed instructions on building the engine for your platform.
