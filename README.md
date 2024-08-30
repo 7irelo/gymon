@@ -1,31 +1,50 @@
-# Gymon Render Engine
+# Gymon Rendering Engine
 
-Welcome to the Gymon 3D Render Engine repository! Gymon is a specialized 3D rendering engine tailored for engineering applications, particularly in biomedical, aeronautical, and mechanical engineering. By enabling complex simulations and visualizations, Gymon has contributed to significant advancements in these fields, making it an invaluable tool for research and development.
+Welcome to the Gymon 3D Rendering Engine repository! Gymon is a specialized 3D rendering engine tailored for engineering applications, particularly in biomedical, aeronautical, and mechanical engineering. By enabling complex simulations and visualizations, Gymon has contributed to significant advancements in these fields, making it an invaluable tool for research and development.
 
 ## Table of Contents
 
 - [Introduction](#introduction)
 - [Features](#features)
+- [Technologies Used](#technologies-used)
 - [Getting Started](#getting-started)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Introduction
 
-Gymon is a cross-platform 3D render engine designed to meet the rigorous demands of engineering applications. Leveraging the power and flexibility of C++ with the high-performance graphics capabilities of OpenGL, Gymon facilitates detailed simulations and visualizations that are critical in fields such as biomedical, aeronautical, and mechanical engineering. Whether you're conducting research, developing new technologies, or visualizing complex data, Gymon provides the tools and framework to bring your projects to life.
+Gymon is a cross-platform 3D rendering engine designed to meet the rigorous demands of engineering applications. Leveraging the power and flexibility of C++ with advanced graphics APIs like OpenGL, DirectX, and Vulkan, Gymon facilitates detailed simulations and visualizations that are critical in fields such as biomedical, aeronautical, and mechanical engineering. Whether you're conducting research, developing new technologies, or visualizing complex data, Gymon provides the tools and framework to bring your projects to life.
 
 ## Features
 
 - **Tailored for Engineering:** Specifically designed for engineering applications, with a focus on biomedical, aeronautical, and mechanical engineering, enabling precise and accurate simulations.
 - **Cross-Platform Compatibility:** Supports multiple platforms, including Windows, macOS, and Linux, allowing for widespread deployment and collaboration across different environments.
-- **Advanced OpenGL Rendering:** Utilizes the OpenGL graphics library to deliver high-performance rendering for intricate 3D models and simulations.
+- **Advanced Rendering Options:** Supports multiple graphics APIs including OpenGL, DirectX (Direct3D), and Vulkan, offering flexibility and performance tailored to specific platforms and project needs.
+- **Custom Shaders:** Implement custom shaders using GLSL, HLSL (for DirectX), or SPIR-V (for Vulkan) to achieve advanced visual effects tailored to engineering simulations.
 - **Scene Management:** Efficiently manage complex scenes, entities, and assets, with an intuitive system optimized for engineering projects.
-- **Custom Shaders:** Implement custom shaders to achieve advanced visual effects tailored to specific engineering needs.
-- **Physics Integration:** Seamlessly integrate physics simulations, essential for accurate modeling in aeronautical and mechanical engineering.
+- **Physics Integration:** Seamlessly integrate physics simulations with libraries like Bullet Physics or PhysX, essential for accurate modeling in aeronautical and mechanical engineering.
 - **High Precision Rendering:** Ensures the accuracy and precision necessary for biomedical simulations and mechanical engineering visualizations.
+- **GPU Computing:** Utilize GPU computing with technologies like CUDA (NVIDIA) or DirectCompute (DirectX) for intensive parallel processing tasks.
 - **Input Handling:** Supports various input devices, facilitating interactive simulations and real-time data manipulation.
 - **Scripting Support:** Extend and automate functionalities using scripting languages such as Lua or Python, integrated directly into the engine.
 - **Customizable:** Highly customizable to meet the specific needs of different engineering disciplines and projects.
+
+## Technologies Used
+
+- **C++**: Core programming language for building the engine.
+- **Graphics APIs**: 
+  - **OpenGL**: Cross-platform rendering.
+  - **DirectX**: Specifically Direct3D for Windows-based rendering.
+  - **Vulkan**: For advanced, low-level cross-platform rendering.
+  - **Metal** (for macOS/iOS): High-performance rendering on Apple devices.
+- **GLFW**: For cross-platform window and input management.
+- **GLEW**: For managing OpenGL extensions.
+- **GLM (OpenGL Mathematics)**: Handling vectors, matrices, and other math operations.
+- **Bullet Physics/PhysX**: For physics simulations.
+- **CUDA/DirectCompute**: For GPU-accelerated computing.
+- **GLSL/HLSL/SPIR-V**: For writing custom shaders.
+- **Assimp**: For loading 3D model formats.
+- **ImGui**: For creating simple GUI interfaces.
 
 ## Getting Started
 
@@ -33,7 +52,6 @@ To get started with Gymon, follow these steps:
 
 1. **Clone the Repository:** Clone this repository to your local machine using Git:
 
-    
    ```bash
    git clone https://github.com/7irelo/gymon.git
    ```
@@ -48,7 +66,7 @@ To get started with Gymon, follow these steps:
 
 ## Contributing
 
-Contributions to the Gymon 3D Render Engine project are welcome and encouraged. Whether you're fixing bugs, adding new features, or improving documentation, your contributions help make Gymon a better tool for engineers and researchers. To contribute, fork the repository, make your changes, and submit a pull request. Please follow the contribution guidelines provided in the repository documentation.
+Contributions to the Gymon 3D Rendering Engine project are welcome and encouraged. Whether you're fixing bugs, adding new features, or improving documentation, your contributions help make Gymon a better tool for engineers and researchers. To contribute, fork the repository, make your changes, and submit a pull request. Please follow the contribution guidelines provided in the repository documentation.
 
 ## License
 
