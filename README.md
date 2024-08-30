@@ -1,6 +1,6 @@
-# Gymon Game Engine
+# Gymon Render Engine
 
-Welcome to the Gymon Game Engine repository! Gymon is a powerful game engine built using C++ and OpenGL. Whether you're a game developer looking for a flexible engine to create your next masterpiece or an enthusiast eager to dive into game development, Gymon provides the tools and framework you need to bring your ideas to life.
+Welcome to the Gymon 3D Render Engine repository! Gymon is a specialized 3D rendering engine tailored for engineering applications, particularly in biomedical, aeronautical, and mechanical engineering. By enabling complex simulations and visualizations, Gymon has contributed to significant advancements in these fields, making it an invaluable tool for research and development.
 
 ## Table of Contents
 
@@ -12,18 +12,20 @@ Welcome to the Gymon Game Engine repository! Gymon is a powerful game engine bui
 
 ## Introduction
 
-Gymon is a cross-platform game engine designed to simplify the process of game development. It leverages the power of C++ for performance and flexibility and utilizes OpenGL for high-performance graphics rendering. Whether you're developing 2D or 3D games, Gymon provides a robust set of tools and features to support your creative vision.
+Gymon is a cross-platform 3D render engine designed to meet the rigorous demands of engineering applications. Leveraging the power and flexibility of C++ with the high-performance graphics capabilities of OpenGL, Gymon facilitates detailed simulations and visualizations that are critical in fields such as biomedical, aeronautical, and mechanical engineering. Whether you're conducting research, developing new technologies, or visualizing complex data, Gymon provides the tools and framework to bring your projects to life.
 
 ## Features
 
-- **Cross-Platform Compatibility:** Gymon supports multiple platforms, including Windows, macOS, and Linux, allowing you to develop games for a wide audience.
-- **OpenGL Rendering:** Utilizing the OpenGL graphics library, Gymon provides high-performance graphics rendering for both 2D and 3D games.
-- **Scene Management:** Easily manage game scenes, entities, and assets using Gymon's intuitive scene management system.
-- **Physics Integration:** Integrate physics simulations into your games using Gymon's built-in physics engine or external libraries.
-- **Audio Support:** Add immersive sound effects and music to your games with Gymon's audio support features.
-- **Input Handling:** Handle player input with ease using Gymon's input handling system, supporting keyboards, mice, game controllers, and touch devices.
-- **Scripting Support:** Extend the functionality of your games using scripting languages such as Lua or Python, seamlessly integrated into Gymon.
-- **Customizable:** Gymon is highly customizable, allowing you to tailor it to your specific needs and preferences.
+- **Tailored for Engineering:** Specifically designed for engineering applications, with a focus on biomedical, aeronautical, and mechanical engineering, enabling precise and accurate simulations.
+- **Cross-Platform Compatibility:** Supports multiple platforms, including Windows, macOS, and Linux, allowing for widespread deployment and collaboration across different environments.
+- **Advanced OpenGL Rendering:** Utilizes the OpenGL graphics library to deliver high-performance rendering for intricate 3D models and simulations.
+- **Scene Management:** Efficiently manage complex scenes, entities, and assets, with an intuitive system optimized for engineering projects.
+- **Custom Shaders:** Implement custom shaders to achieve advanced visual effects tailored to specific engineering needs.
+- **Physics Integration:** Seamlessly integrate physics simulations, essential for accurate modeling in aeronautical and mechanical engineering.
+- **High Precision Rendering:** Ensures the accuracy and precision necessary for biomedical simulations and mechanical engineering visualizations.
+- **Input Handling:** Supports various input devices, facilitating interactive simulations and real-time data manipulation.
+- **Scripting Support:** Extend and automate functionalities using scripting languages such as Lua or Python, integrated directly into the engine.
+- **Customizable:** Highly customizable to meet the specific needs of different engineering disciplines and projects.
 
 ## Getting Started
 
@@ -31,21 +33,22 @@ To get started with Gymon, follow these steps:
 
 1. **Clone the Repository:** Clone this repository to your local machine using Git:
 
-    ```
-    git clone https://github.com/7irelo/gymon.git
-    ```
+    
+   ```bash
+   git clone https://github.com/7irelo/gymon.git
+   ```
 
-2. **Build the Engine:** Build Gymon using your preferred build system (e.g., CMake, Makefile). Refer to the documentation provided in the repository for detailed instructions on building the engine for your platform.
+2. **Build the Engine:** Build Gymon using your preferred build system (e.g., CMake, Makefile). Detailed instructions on building the engine for your platform are provided in the repository documentation.
 
-3. **Explore the Examples:** Check out the example projects included with Gymon to get a feel for how to use its features and capabilities. Experiment with modifying the examples to understand how different aspects of the engine work.
+3. **Explore the Examples:** Review the example projects included with Gymon, which demonstrate how to utilize the engine's features and capabilities. Experiment with these examples to gain an understanding of how Gymon can be applied to your specific engineering needs.
 
-4. **Start Developing:** Once you're familiar with Gymon, start building your own games using the provided tools and libraries. Refer to the documentation and example projects for guidance on game development with Gymon.
+4. **Start Developing:** Once you're comfortable with Gymon, begin developing your own simulations or visualizations. Use the provided tools and libraries to create detailed and accurate engineering models. Refer to the documentation and example projects for guidance.
 
-5. **Contribute:** If you encounter any issues or have ideas for improvements, feel free to contribute to the repository by submitting bug reports, feature requests, or pull requests. Your contributions help make Gymon better for everyone in the community.
+5. **Contribute:** If you have ideas for improvements or encounter any issues, contribute to the repository by submitting bug reports, feature requests, or pull requests. Your contributions help enhance Gymon for the entire engineering community.
 
 ## Contributing
 
-Contributions to the Gymon Game Engine project are welcome and encouraged. Whether you're fixing a bug, implementing a new feature, or improving documentation, your contributions help make the engine better for game developers everywhere. To contribute, simply fork the repository, make your changes, and submit a pull request. Be sure to follow the contribution guidelines outlined in the repository's documentation.
+Contributions to the Gymon 3D Render Engine project are welcome and encouraged. Whether you're fixing bugs, adding new features, or improving documentation, your contributions help make Gymon a better tool for engineers and researchers. To contribute, fork the repository, make your changes, and submit a pull request. Please follow the contribution guidelines provided in the repository documentation.
 
 ## License
 
