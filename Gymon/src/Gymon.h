@@ -7,5 +7,4 @@
 
 // ------- Entry Point ------------
 #include "Gymon/EntryPoint.h"
-
 // --------------------------------
