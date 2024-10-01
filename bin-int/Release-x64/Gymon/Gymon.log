@@ -1,7 +1,0 @@
-﻿  Application.cpp
-     Creating library C:\dev\Gymon\bin\Release-x64\Gymon\Gymon.lib and object C:\dev\Gymon\bin\Release-x64\Gymon\Gymon.exp
-  Generating code
-  Previous IPDB and IOBJ mismatch, fall back to full compilation.
-  All 6 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  Gymon.vcxproj -> C:\dev\Gymon\bin\Release-x64\Gymon\Gymon.dll
