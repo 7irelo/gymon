@@ -4,6 +4,9 @@
     <Filter Include="Gymon">
       <UniqueIdentifier>{2F04480D-9B18-70BE-649A-131ED06D6CEF}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Gymon\Events">
+      <UniqueIdentifier>{3345277F-1FA8-B623-C82D-EFD9B46F82A6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Gymon.h" />
@@ -15,6 +18,18 @@
     </ClInclude>
     <ClInclude Include="src\Gymon\EntryPoint.h">
       <Filter>Gymon</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gymon\Events\ApplicationEvent.h">
+      <Filter>Gymon\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gymon\Events\Event.h">
+      <Filter>Gymon\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gymon\Events\KeyEvent.h">
+      <Filter>Gymon\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Gymon\Events\MouseEvent.h">
+      <Filter>Gymon\Events</Filter>
     </ClInclude>
     <ClInclude Include="src\Gymon\Log.h">
       <Filter>Gymon</Filter>
