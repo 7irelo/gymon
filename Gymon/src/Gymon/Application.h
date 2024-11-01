@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Core.h"
+#include "Events/Event.h"
+
 namespace Gymon {
 
 	class GYMON_API Application
