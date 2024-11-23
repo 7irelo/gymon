@@ -73,6 +73,7 @@ namespace Gymon {
 		{
 			std::stringstream ss;
 			ss << "MouseButtontPressedEvent" << m_Button;
+			return ss.str();
 		}
 
 		EVENT_CLASS_TYPE(MouseButtonPressed)
@@ -88,6 +89,7 @@ namespace Gymon {
 		{
 			std::stringstream ss;
 			ss << "MouseButtontReleasedEvent" << m_Button;
+			return ss.str();
 		}
 
 		EVENT_CLASS_TYPE(MouseButtonReleased)
