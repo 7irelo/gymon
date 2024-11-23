@@ -10,6 +10,11 @@ workspace "Gymon"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
+includeDir = {}
+includeDir["GLFW"] = "Gymon/vendor/GLFW/include"
+
+include "Gymon/vendor/GLFW"
+
 project "Gymon"
 	location "Gymon"
 	kind "SharedLib"
@@ -30,8 +35,11 @@ project "Gymon"
 	includedirs
 	{
 		"%{prj.name}/src",
-		"%{prj.name}/vendor/spdlog/include"
+		"%{prj.name}/vendor/spdlog/include",
+		"%{includeDir.GLFW}"
 	}
+
+	links
 
 	filter "system:windows"
 		cppdialect "C++20"

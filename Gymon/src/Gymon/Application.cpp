@@ -9,7 +9,7 @@ namespace Gymon {
 
 	Application::Application()
 	{
-
+		m_Window = std::unique_ptr<Window>(Window::Create());
 	}
 
 	Application::~Application()
@@ -19,21 +19,9 @@ namespace Gymon {
 
 	void Application::Run()
 	{
-		WindowResizeEvent e(1200, 720);
-		MouseMovedEvent f(20, 30);
-		if (e.IsInCategory(EventCategoryApplication))
+		while (m_Running)
 		{
-			GY_TRACE(e.ToString());
+			m_Window->OnUpdate();
 		}
-		if (e.IsInCategory(EventCategoryInput))
-		{
-			GY_TRACE(e.ToString());
-		}
-		if (f.IsInCategory(EventCategoryMouse))
-		{
-			GY_ERROR(f.ToString());
-		}
-		
-		while (true);
 	}
 }
