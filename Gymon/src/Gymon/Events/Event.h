@@ -10,13 +10,13 @@ namespace Gymon {
 	enum class EventType
 	{
 		None = 0,
-		WindowClows, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
+		WindowClose, WindowResize, WindowFocus, WindowLostFocus, WindowMoved,
 		AppTick, AppUpdate, AppRender,
 		KeyPressed, KeyReleased,
 		MouseButtonPressed, MouseButtonReleased, MouseMoved, MouseScrolled
 	};
 
-	enum class EventCategory
+	enum EventCategory
 	{
 		None = 0,
 		EventCategoryApplication = BIT(0),
@@ -63,7 +63,7 @@ namespace Gymon {
 		template<typename T>
 		bool Dispatch(EventFn<T> func)
 		{
-			if (m_Event.GetEventType == T::GetStaticType())
+			if (m_Event.GetEventType() == T::GetStaticType())
 			{
 				m_Event.m_Handled = func(*(T*)&m_Event);
 				return true;
