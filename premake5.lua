@@ -18,6 +18,9 @@ project "Gymon"
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("obj/" .. outputdir .. "/%{prj.name}")
 
+	pchheader "gypch.h"
+	pchsource "Gymon/src/gypch.cpp"
+
 	files
 	{
 		"%{prj.name}/src/**.h",
