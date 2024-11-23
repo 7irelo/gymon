@@ -158,7 +158,9 @@
     <ClInclude Include="src\Gymon\Events\KeyEvent.h" />
     <ClInclude Include="src\Gymon\Events\MouseEvent.h" />
     <ClInclude Include="src\Gymon\Log.h" />
+    <ClInclude Include="src\Gymon\Window.h" />
     <ClInclude Include="src\gypch.h" />
+    <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Gymon\Application.cpp" />
@@ -166,6 +168,7 @@
     <ClCompile Include="src\gypch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
