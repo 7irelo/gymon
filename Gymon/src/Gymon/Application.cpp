@@ -18,7 +18,7 @@ namespace Gymon {
 	void Application::Run()
 	{
 		WindowResizeEvent e(1200, 720);
-		GY_TRACE(e);
+		GY_TRACE(e.ToString());
 		while (true);
 	}
 }
