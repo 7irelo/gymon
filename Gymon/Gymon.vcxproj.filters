@@ -34,6 +34,7 @@
     <ClInclude Include="src\Gymon\Log.h">
       <Filter>Gymon</Filter>
     </ClInclude>
+    <ClInclude Include="src\gypch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Gymon\Application.cpp">
@@ -42,5 +43,6 @@
     <ClCompile Include="src\Gymon\Log.cpp">
       <Filter>Gymon</Filter>
     </ClCompile>
+    <ClCompile Include="src\gypch.cpp" />
   </ItemGroup>
 </Project>

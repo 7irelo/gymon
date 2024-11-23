@@ -2,8 +2,6 @@
 
 #include "Event.h"
 
-#include <sstream>
-
 namespace Gymon {
 
 	class GYMON_API MouseMovedEvent : public Event

@@ -1,9 +1,7 @@
 #pragma once
 
+#include "gypch.h"
 #include "Gymon/Core.h"
-
-#include <string>
-#include <functional>
 
 namespace Gymon {
 
