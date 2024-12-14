@@ -157,6 +157,7 @@
     <ClInclude Include="src\Gymon\Events\Event.h" />
     <ClInclude Include="src\Gymon\Events\KeyEvent.h" />
     <ClInclude Include="src\Gymon\Events\MouseEvent.h" />
+    <ClInclude Include="src\Gymon\Layer.h" />
     <ClInclude Include="src\Gymon\Log.h" />
     <ClInclude Include="src\Gymon\Window.h" />
     <ClInclude Include="src\gypch.h" />
@@ -164,6 +165,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Gymon\Application.cpp" />
+    <ClCompile Include="src\Gymon\Layer.cpp" />
     <ClCompile Include="src\Gymon\Log.cpp" />
     <ClCompile Include="src\gypch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
