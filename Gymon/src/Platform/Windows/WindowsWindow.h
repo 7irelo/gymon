@@ -1,8 +1,9 @@
 #pragma once
 
 #include "Gymon/Window.h"
+#include "Gymon/Renderer/GraphicsContext.h"
 
-#include <GLFW/glfw3.h>
+struct GLFWwindow;
 
 namespace Gymon {
 
@@ -20,11 +21,14 @@ namespace Gymon {
 		inline void SetEventCallback(const EventCallbackFn& callback) override { m_Data.EventCallback = callback; }
 		void SetVSync(bool enabled) override;
 		bool IsVSync() const override;
+
+		inline void* GetNativeWindow() const override { return m_Window; }
 	private:
 		virtual void Init(const WindowProps& props);
-		virtual void ShutDown();
+		virtual void Shutdown();
 	private:
 		GLFWwindow* m_Window;
+		Scope<GraphicsContext> m_Context;
 
 		struct WindowData
 		{
@@ -34,7 +38,7 @@ namespace Gymon {
 
 			EventCallbackFn EventCallback;
 		};
+
 		WindowData m_Data;
 	};
 }
-

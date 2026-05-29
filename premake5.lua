@@ -1,5 +1,6 @@
 workspace "Gymon"
-	architecture "x64"
+	architecture "x86_64"
+	startproject "Sandbox"
 
 	configurations
 	{
@@ -8,17 +9,73 @@ workspace "Gymon"
 		"Dist"
 	}
 
+	flags
+	{
+		"MultiProcessorCompile"
+	}
+
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 
-includeDir = {}
-includeDir["GLFW"] = "Gymon/vendor/GLFW/include"
+-- Include directories relative to the root folder (solution directory)
+IncludeDir = {}
+IncludeDir["GLFW"] = "Gymon/vendor/GLFW/include"
+IncludeDir["Glad"] = "Gymon/vendor/Glad/include"
+IncludeDir["ImGui"] = "Gymon/vendor/imgui"
+IncludeDir["glm"] = "Gymon/vendor/glm"
+IncludeDir["stb_image"] = "Gymon/vendor/stb_image"
 
-include "Gymon/vendor/GLFW"
+group "Dependencies"
+	include "Gymon/vendor/GLFW"
+	include "Gymon/vendor/Glad"
+
+	project "ImGui"
+		location "Gymon/vendor/imgui"
+		kind "StaticLib"
+		language "C++"
+		cppdialect "C++17"
+		staticruntime "off"
+
+		targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+		objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+		files
+		{
+			"Gymon/vendor/imgui/imconfig.h",
+			"Gymon/vendor/imgui/imgui.h",
+			"Gymon/vendor/imgui/imgui.cpp",
+			"Gymon/vendor/imgui/imgui_draw.cpp",
+			"Gymon/vendor/imgui/imgui_internal.h",
+			"Gymon/vendor/imgui/imgui_tables.cpp",
+			"Gymon/vendor/imgui/imgui_widgets.cpp",
+			"Gymon/vendor/imgui/imstb_rectpack.h",
+			"Gymon/vendor/imgui/imstb_textedit.h",
+			"Gymon/vendor/imgui/imstb_truetype.h",
+			"Gymon/vendor/imgui/imgui_demo.cpp"
+		}
+
+		filter "system:windows"
+			systemversion "latest"
+
+		filter "configurations:Debug"
+			runtime "Debug"
+			symbols "on"
+
+		filter "configurations:Release"
+			runtime "Release"
+			optimize "on"
+
+		filter "configurations:Dist"
+			runtime "Release"
+			optimize "on"
+			symbols "off"
+group ""
 
 project "Gymon"
 	location "Gymon"
-	kind "SharedLib"
+	kind "StaticLib"
 	language "C++"
+	cppdialect "C++20"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("obj/" .. outputdir .. "/%{prj.name}")
@@ -29,53 +86,80 @@ project "Gymon"
 	files
 	{
 		"%{prj.name}/src/**.h",
-		"%{prj.name}/src/**.cpp"
+		"%{prj.name}/src/**.cpp",
+		"%{prj.name}/vendor/stb_image/**.h",
+		"%{prj.name}/vendor/stb_image/**.cpp",
+		"%{prj.name}/vendor/glm/glm/**.hpp",
+		"%{prj.name}/vendor/glm/glm/**.inl",
+		"%{prj.name}/vendor/imgui/backends/imgui_impl_glfw.cpp",
+		"%{prj.name}/vendor/imgui/backends/imgui_impl_opengl3.cpp"
+	}
+
+	defines
+	{
+		"_CRT_SECURE_NO_WARNINGS",
+		"GLFW_INCLUDE_NONE"
 	}
 
 	includedirs
 	{
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
-		"%{includeDir.GLFW}"
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.stb_image}"
 	}
 
 	links
+	{
+		"GLFW",
+		"Glad",
+		"ImGui",
+		"opengl32.lib"
+	}
+
+	-- Vendor sources don't use the engine's precompiled header.
+	filter "files:Gymon/vendor/**.cpp"
+		flags { "NoPCH" }
 
 	filter "system:windows"
-		cppdialect "C++20"
-		staticruntime "On"
 		systemversion "latest"
 
 		defines
 		{
 			"GY_PLATFORM_WINDOWS",
-			"GY_BUILD_DLL"
-		}
-
-		postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
+			"GY_BUILD_DLL",
+			"NOMINMAX"
 		}
 
 	filter "configurations:Debug"
 		defines "GY_DEBUG"
-		symbols "On"
+		runtime "Debug"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "GY_RELEASE"
-		optimize "On"
+		runtime "Release"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "GY_DIST"
-		optimize "On"
+		runtime "Release"
+		optimize "on"
 
 project "Sandbox"
 	location "Sandbox"
 	kind "ConsoleApp"
 	language "C++"
+	cppdialect "C++20"
+	staticruntime "off"
 
 	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
 	objdir ("obj/" .. outputdir .. "/%{prj.name}")
+
+	debugdir "%{prj.location}"
 
 	files
 	{
@@ -86,7 +170,10 @@ project "Sandbox"
 	includedirs
 	{
 		"Gymon/vendor/spdlog/include",
-		"Gymon/src"
+		"Gymon/src",
+		"Gymon/vendor",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.glm}"
 	}
 
 	links
@@ -95,23 +182,25 @@ project "Sandbox"
 	}
 
 	filter "system:windows"
-		cppdialect "C++20"
-		staticruntime "On"
 		systemversion "latest"
 
 		defines
 		{
-			"GY_PLATFORM_WINDOWS"
+			"GY_PLATFORM_WINDOWS",
+			"NOMINMAX"
 		}
 
 	filter "configurations:Debug"
 		defines "GY_DEBUG"
-		symbols "On"
+		runtime "Debug"
+		symbols "on"
 
 	filter "configurations:Release"
 		defines "GY_RELEASE"
-		optimize "On"
+		runtime "Release"
+		optimize "on"
 
 	filter "configurations:Dist"
 		defines "GY_DIST"
-		optimize "On"
+		runtime "Release"
+		optimize "on"

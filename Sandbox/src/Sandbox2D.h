@@ -1,0 +1,28 @@
+#pragma once
+
+#include <Gymon.h>
+
+class Sandbox2D : public Gymon::Layer
+{
+public:
+	Sandbox2D();
+	virtual ~Sandbox2D() = default;
+
+	virtual void OnAttach() override;
+	virtual void OnDetach() override;
+
+	virtual void OnUpdate(Gymon::Timestep ts) override;
+	virtual void OnImGuiRender() override;
+	virtual void OnEvent(Gymon::Event& e) override;
+
+	void SetActive(bool active) { m_Active = active; }
+	bool IsActive() const { return m_Active; }
+private:
+	bool m_Active = true;
+	Gymon::OrthographicCameraController m_CameraController;
+
+	Gymon::Ref<Gymon::Texture2D> m_CheckerboardTexture;
+
+	glm::vec4 m_SquareColor = { 0.2f, 0.3f, 0.8f, 1.0f };
+	float m_Rotation = 0.0f;
+};

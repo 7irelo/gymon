@@ -1,5 +1,12 @@
 .vs/
 bin/
+bin-int/
 obj/
+
+# Premake-generated Visual Studio project files
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
 
 *.user

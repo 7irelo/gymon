@@ -1,13 +1,22 @@
 #pragma once
 
+#ifndef NOMINMAX
+	#define NOMINMAX
+#endif
+
 #include <iostream>
 #include <memory>
 #include <utility>
 #include <algorithm>
 #include <functional>
 
+#include <cstdint>
+#include <cstring>
+
 #include <string>
 #include <sstream>
+#include <fstream>
+#include <array>
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
