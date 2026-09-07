@@ -10,3 +10,6 @@ obj/
 *.vcxproj.user
 
 *.user
+
+# CMake build tree
+build/

@@ -2,9 +2,10 @@
 
 #include <memory>
 
-#ifdef GY_PLATFORM_WINDOWS
-#else
-	#error Gymon only supports Windows!
+// The window and input layers sit entirely on GLFW, so every desktop platform
+// GLFW supports works here. The build must define exactly one of these.
+#if !defined(GY_PLATFORM_WINDOWS) && !defined(GY_PLATFORM_LINUX) && !defined(GY_PLATFORM_MACOS)
+	#error Gymon requires GY_PLATFORM_WINDOWS, GY_PLATFORM_LINUX or GY_PLATFORM_MACOS.
 #endif
 
 // Gymon is built as a static library, so no import/export decoration is needed.

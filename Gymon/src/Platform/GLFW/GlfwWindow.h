@@ -7,11 +7,11 @@ struct GLFWwindow;
 
 namespace Gymon {
 
-	class WindowsWindow : public Window
+	class GlfwWindow : public Window
 	{
 	public:
-		WindowsWindow(const WindowProps& props);
-		virtual ~WindowsWindow();
+		GlfwWindow(const WindowProps& props);
+		virtual ~GlfwWindow();
 
 		void OnUpdate() override;
 

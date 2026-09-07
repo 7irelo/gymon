@@ -1,5 +1,5 @@
 #include "gypch.h"
-#include "WindowsWindow.h"
+#include "GlfwWindow.h"
 
 #include "Gymon/Events/ApplicationEvent.h"
 #include "Gymon/Events/KeyEvent.h"
@@ -20,20 +20,20 @@ namespace Gymon {
 
 	Scope<Window> Window::Create(const WindowProps& props)
 	{
-		return CreateScope<WindowsWindow>(props);
+		return CreateScope<GlfwWindow>(props);
 	}
 
-	WindowsWindow::WindowsWindow(const WindowProps& props)
+	GlfwWindow::GlfwWindow(const WindowProps& props)
 	{
 		Init(props);
 	}
 
-	WindowsWindow::~WindowsWindow()
+	GlfwWindow::~GlfwWindow()
 	{
 		Shutdown();
 	}
 
-	void WindowsWindow::Init(const WindowProps& props)
+	void GlfwWindow::Init(const WindowProps& props)
 	{
 		m_Data.Title = props.Title;
 		m_Data.Width = props.Width;
@@ -149,7 +149,7 @@ namespace Gymon {
 		});
 	}
 
-	void WindowsWindow::Shutdown()
+	void GlfwWindow::Shutdown()
 	{
 		glfwDestroyWindow(m_Window);
 		--s_GLFWWindowCount;
@@ -158,13 +158,13 @@ namespace Gymon {
 			glfwTerminate();
 	}
 
-	void WindowsWindow::OnUpdate()
+	void GlfwWindow::OnUpdate()
 	{
 		glfwPollEvents();
 		m_Context->SwapBuffers();
 	}
 
-	void WindowsWindow::SetVSync(bool enabled)
+	void GlfwWindow::SetVSync(bool enabled)
 	{
 		if (enabled)
 			glfwSwapInterval(1);
@@ -174,7 +174,7 @@ namespace Gymon {
 		m_Data.VSync = enabled;
 	}
 
-	bool WindowsWindow::IsVSync() const
+	bool GlfwWindow::IsVSync() const
 	{
 		return m_Data.VSync;
 	}
