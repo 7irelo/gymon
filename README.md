@@ -12,6 +12,11 @@ switch between them at runtime from the menu bar.
 
 ![Gymon - build, 2D and 3D rendering, layers, input and events, shaders, textures, render stats and project layout](docs/screenshots/gymon-engine.png)
 
+The editor, running. Scene hierarchy, a framebuffer-backed viewport, the
+inspector and live render statistics:
+
+![Gymon editor - scene hierarchy, viewport, inspector and statistics](docs/screenshots/editor.png)
+
 ## Features
 
 - **Application / Layer architecture** — overlayable layers with attach,

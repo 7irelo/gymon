@@ -24,6 +24,7 @@ public:
 private:
 	void BuildScene();
 	void DrawStatsPanel();
+	void DrawViewport();
 
 private:
 	bool m_Active = false;
@@ -35,6 +36,13 @@ private:
 	Gymon::PropertiesPanel m_Inspector;
 
 	Gymon::ShaderLibrary m_Shaders;
+
+	// The scene renders into this and is displayed as an ImGui image, so it
+	// sits inside a viewport panel instead of behind the whole UI.
+	Gymon::Ref<Gymon::Framebuffer> m_Framebuffer;
+	glm::vec2 m_ViewportSize{ 0.0f, 0.0f };
+	bool m_ViewportFocused = false;
+	bool m_ViewportHovered = false;
 
 	// Rolling frame timing for the stats panel. A single frame's delta is too
 	// noisy to read, so it is smoothed.

@@ -13,6 +13,11 @@ void EditorLayer::OnAttach()
 	// ShaderLibrary::ReloadChanged() can watch and recompile.
 	m_Shaders.Load("assets/shaders/Lit.glsl");
 
+	Gymon::FramebufferSpecification fbSpec;
+	fbSpec.Width = 1280;
+	fbSpec.Height = 720;
+	m_Framebuffer = Gymon::Framebuffer::Create(fbSpec);
+
 	BuildScene();
 	m_Hierarchy.SetContext(m_Scene);
 
@@ -69,13 +74,30 @@ void EditorLayer::OnUpdate(Gymon::Timestep ts)
 	// Only stats the shader files unless one actually changed on disk.
 	m_ShaderReloads += m_Shaders.ReloadChanged();
 
-	m_CameraController.OnUpdate(ts);
+	// Resize before rendering, so the first frame at a new size is already
+	// correct rather than a frame of stretched image.
+	const auto& spec = m_Framebuffer->GetSpecification();
+	if (m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f &&
+		(spec.Width != (uint32_t)m_ViewportSize.x || spec.Height != (uint32_t)m_ViewportSize.y))
+	{
+		m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
+	}
+
+	// Camera input only while the viewport has focus, otherwise WASD typed
+	// into an inspector field would fly the camera around.
+	if (m_ViewportFocused)
+		m_CameraController.OnUpdate(ts);
+
+	m_Framebuffer->Bind();
 
 	Gymon::RenderCommand::SetClearColor({ 0.09f, 0.10f, 0.13f, 1.0f });
 	Gymon::RenderCommand::Clear();
 
 	Gymon::Renderer::ResetStats();
 	m_Scene->OnRender(m_CameraController.GetCamera());
+
+	m_Framebuffer->Unbind();
 }
 
 void EditorLayer::DrawStatsPanel()
@@ -103,6 +125,31 @@ void EditorLayer::DrawStatsPanel()
 	ImGui::End();
 }
 
+void EditorLayer::DrawViewport()
+{
+	// No padding: the image should meet the panel edges like a real viewport.
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::SetNextWindowPos(ImVec2(300.0f, 40.0f), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(660.0f, 460.0f), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Viewport");
+
+	m_ViewportFocused = ImGui::IsWindowFocused();
+	m_ViewportHovered = ImGui::IsWindowHovered();
+
+	const ImVec2 available = ImGui::GetContentRegionAvail();
+	m_ViewportSize = { available.x, available.y };
+
+	// GL textures have their origin bottom-left, so the UVs are flipped
+	// vertically to present the image the right way up.
+	ImGui::Image(
+		(ImTextureID)(uintptr_t)m_Framebuffer->GetColorAttachmentRendererID(),
+		available,
+		ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
 void EditorLayer::OnImGuiRender()
 {
 	if (!m_Active)
@@ -111,6 +158,7 @@ void EditorLayer::OnImGuiRender()
 	m_Hierarchy.OnImGuiRender();
 	m_Inspector.OnImGuiRender(m_Scene, m_Hierarchy.GetSelected());
 	DrawStatsPanel();
+	DrawViewport();
 }
 
 void EditorLayer::OnEvent(Gymon::Event& e)
