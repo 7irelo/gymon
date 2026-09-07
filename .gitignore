@@ -13,3 +13,6 @@ obj/
 
 # CMake build tree
 build/
+
+# Scenes saved by the editor at runtime
+build/bin/assets/scenes/

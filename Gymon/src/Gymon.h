@@ -31,6 +31,7 @@
 
 // ------- Scene & Editor ---------
 #include "Gymon/Scene/Scene.h"
+#include "Gymon/Scene/SceneSerializer.h"
 #include "Gymon/Editor/SceneHierarchyPanel.h"
 
 #include "Gymon/Renderer/OrthographicCamera.h"

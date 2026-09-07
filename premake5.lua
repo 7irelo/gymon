@@ -23,6 +23,7 @@ IncludeDir["Glad"] = "Gymon/vendor/Glad/include"
 IncludeDir["ImGui"] = "Gymon/vendor/imgui"
 IncludeDir["glm"] = "Gymon/vendor/glm"
 IncludeDir["stb_image"] = "Gymon/vendor/stb_image"
+IncludeDir["json"] = "Gymon/vendor/json"
 
 group "Dependencies"
 	include "Gymon/vendor/GLFW"
@@ -109,7 +110,8 @@ project "Gymon"
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.glm}",
-		"%{IncludeDir.stb_image}"
+		"%{IncludeDir.stb_image}",
+		"%{prj.name}/vendor"
 	}
 
 	links

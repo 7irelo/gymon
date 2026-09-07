@@ -1,6 +1,8 @@
-#include "EditorLayer.h"
+﻿#include "EditorLayer.h"
 
 #include <imgui.h>
+
+#include <filesystem>
 
 EditorLayer::EditorLayer()
 	: Layer("EditorLayer"), m_CameraController(1280.0f / 720.0f, 45.0f)
@@ -125,6 +127,42 @@ void EditorLayer::DrawStatsPanel()
 	ImGui::End();
 }
 
+// Scenes are written next to the executable, alongside the assets the scene
+// references, so a saved scene and its shaders travel together.
+static const char* s_ScenePath = "assets/scenes/Editor.gyscene";
+
+void EditorLayer::SaveScene()
+{
+	std::filesystem::create_directories("assets/scenes");
+	Gymon::SceneSerializer(m_Scene).Serialize(s_ScenePath);
+}
+
+void EditorLayer::LoadScene()
+{
+	Gymon::SceneSerializer serializer(m_Scene);
+	if (serializer.Deserialize(s_ScenePath, m_Shaders))
+	{
+		// The hierarchy holds a selection id that may no longer exist.
+		m_Hierarchy.SetContext(m_Scene);
+	}
+}
+
+void EditorLayer::DrawMenuBar()
+{
+	if (ImGui::BeginMainMenuBar())
+	{
+		if (ImGui::BeginMenu("Scene"))
+		{
+			if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
+				SaveScene();
+			if (ImGui::MenuItem("Load Scene", "Ctrl+O"))
+				LoadScene();
+			ImGui::EndMenu();
+		}
+		ImGui::EndMainMenuBar();
+	}
+}
+
 void EditorLayer::DrawViewport()
 {
 	// No padding: the image should meet the panel edges like a real viewport.
@@ -155,6 +193,7 @@ void EditorLayer::OnImGuiRender()
 	if (!m_Active)
 		return;
 
+	DrawMenuBar();
 	m_Hierarchy.OnImGuiRender();
 	m_Inspector.OnImGuiRender(m_Scene, m_Hierarchy.GetSelected());
 	DrawStatsPanel();
@@ -168,3 +207,4 @@ void EditorLayer::OnEvent(Gymon::Event& e)
 
 	m_CameraController.OnEvent(e);
 }
+

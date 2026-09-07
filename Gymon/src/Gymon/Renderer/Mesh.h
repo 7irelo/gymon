@@ -25,6 +25,13 @@ namespace Gymon {
 
 		uint32_t GetIndexCount() const { return m_IndexCount; }
 
+		// "cube", "plane", "sphere", or "custom" for meshes built from raw
+		// vertex data. Scene files store this rather than the vertices: a
+		// primitive regenerates identically, and writing out its vertices
+		// would make scene files unreadable for no benefit.
+		const char* GetPrimitiveName() const { return m_PrimitiveName; }
+		void SetPrimitiveName(const char* name) { m_PrimitiveName = name; }
+
 		// Built-in primitives
 		static Ref<Mesh> CreateCube();
 		static Ref<Mesh> CreatePlane();
@@ -34,5 +41,6 @@ namespace Gymon {
 	private:
 		Ref<VertexArray> m_VertexArray;
 		uint32_t m_IndexCount;
+		const char* m_PrimitiveName = "custom";
 	};
 }

@@ -71,7 +71,9 @@ namespace Gymon {
 			indices.push_back(offset + 0);
 		}
 
-		return CreateRef<Mesh>(vertices, indices);
+		auto mesh = CreateRef<Mesh>(vertices, indices);
+		mesh->SetPrimitiveName("cube");
+		return mesh;
 	}
 
 	Ref<Mesh> Mesh::CreatePlane()
@@ -84,7 +86,9 @@ namespace Gymon {
 		};
 		std::vector<uint32_t> indices = { 0, 1, 2, 2, 3, 0 };
 
-		return CreateRef<Mesh>(vertices, indices);
+		auto mesh = CreateRef<Mesh>(vertices, indices);
+		mesh->SetPrimitiveName("plane");
+		return mesh;
 	}
 
 	Ref<Mesh> Mesh::CreateSphere(uint32_t latitudeSegments, uint32_t longitudeSegments)
@@ -145,6 +149,8 @@ namespace Gymon {
 			}
 		}
 
-		return CreateRef<Mesh>(vertices, indices);
+		auto mesh = CreateRef<Mesh>(vertices, indices);
+		mesh->SetPrimitiveName("sphere");
+		return mesh;
 	}
 }

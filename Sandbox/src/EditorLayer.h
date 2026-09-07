@@ -25,6 +25,10 @@ private:
 	void BuildScene();
 	void DrawStatsPanel();
 	void DrawViewport();
+	void DrawMenuBar();
+
+	void SaveScene();
+	void LoadScene();
 
 private:
 	bool m_Active = false;
