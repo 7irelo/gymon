@@ -28,6 +28,9 @@ namespace Gymon {
 		// Built-in primitives
 		static Ref<Mesh> CreateCube();
 		static Ref<Mesh> CreatePlane();
+		// UV sphere. Defaults give a smooth-enough ball without a silly vertex
+		// count; raise the segment counts for close-ups.
+		static Ref<Mesh> CreateSphere(uint32_t latitudeSegments = 24, uint32_t longitudeSegments = 48);
 	private:
 		Ref<VertexArray> m_VertexArray;
 		uint32_t m_IndexCount;

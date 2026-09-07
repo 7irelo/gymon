@@ -7,6 +7,7 @@
 namespace Gymon {
 
 	Scope<Renderer::SceneData> Renderer::s_SceneData = CreateScope<Renderer::SceneData>();
+	static Renderer::Statistics s_Stats;
 
 	void Renderer::Init()
 	{
@@ -38,13 +39,29 @@ namespace Gymon {
 	{
 	}
 
-	void Renderer::Submit(const Ref<Shader>& shader, const Ref<VertexArray>& vertexArray, const glm::mat4& transform)
+	void Renderer::Submit(const Ref<Shader>& shader, const Ref<VertexArray>& vertexArray, const glm::mat4& transform, uint32_t indexCount)
 	{
 		shader->Bind();
 		std::static_pointer_cast<OpenGLShader>(shader)->UploadUniformMat4("u_ViewProjection", s_SceneData->ViewProjectionMatrix);
 		std::static_pointer_cast<OpenGLShader>(shader)->UploadUniformMat4("u_Transform", transform);
 
 		vertexArray->Bind();
-		RenderCommand::DrawIndexed(vertexArray);
+		RenderCommand::DrawIndexed(vertexArray, indexCount);
+
+		const uint32_t drawn = indexCount ? indexCount : vertexArray->GetIndexBuffer()->GetCount();
+		s_Stats.DrawCalls++;
+		s_Stats.MeshCount++;
+		s_Stats.TriangleCount += drawn / 3;
+		s_Stats.VertexCount += drawn;
+	}
+
+	void Renderer::ResetStats()
+	{
+		s_Stats = Statistics{};
+	}
+
+	Renderer::Statistics Renderer::GetStats()
+	{
+		return s_Stats;
 	}
 }

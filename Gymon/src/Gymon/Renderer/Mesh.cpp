@@ -86,4 +86,65 @@ namespace Gymon {
 
 		return CreateRef<Mesh>(vertices, indices);
 	}
+
+	Ref<Mesh> Mesh::CreateSphere(uint32_t latitudeSegments, uint32_t longitudeSegments)
+	{
+		// Standard UV sphere: walk latitude bands from pole to pole, and for
+		// each band walk longitude all the way round. The seam vertex is
+		// duplicated (lon runs to <= longitudeSegments) so texture coordinates
+		// wrap cleanly instead of interpolating back across the whole texture.
+		latitudeSegments = latitudeSegments < 2 ? 2 : latitudeSegments;
+		longitudeSegments = longitudeSegments < 3 ? 3 : longitudeSegments;
+
+		constexpr float pi = 3.14159265358979323846f;
+		const float radius = 0.5f;
+
+		std::vector<Vertex> vertices;
+		vertices.reserve((latitudeSegments + 1) * (longitudeSegments + 1));
+
+		for (uint32_t lat = 0; lat <= latitudeSegments; lat++)
+		{
+			const float v = static_cast<float>(lat) / static_cast<float>(latitudeSegments);
+			const float theta = v * pi;
+			const float sinTheta = std::sin(theta);
+			const float cosTheta = std::cos(theta);
+
+			for (uint32_t lon = 0; lon <= longitudeSegments; lon++)
+			{
+				const float u = static_cast<float>(lon) / static_cast<float>(longitudeSegments);
+				const float phi = u * 2.0f * pi;
+
+				const glm::vec3 normal{ sinTheta * std::cos(phi), cosTheta, sinTheta * std::sin(phi) };
+
+				Vertex vertex;
+				vertex.Position = normal * radius;
+				vertex.Normal = normal;   // unit sphere: the normal is the direction
+				vertex.TexCoord = { u, 1.0f - v };
+				vertices.push_back(vertex);
+			}
+		}
+
+		std::vector<uint32_t> indices;
+		indices.reserve(latitudeSegments * longitudeSegments * 6);
+
+		const uint32_t stride = longitudeSegments + 1;
+		for (uint32_t lat = 0; lat < latitudeSegments; lat++)
+		{
+			for (uint32_t lon = 0; lon < longitudeSegments; lon++)
+			{
+				const uint32_t first = lat * stride + lon;
+				const uint32_t second = first + stride;
+
+				indices.push_back(first);
+				indices.push_back(second);
+				indices.push_back(first + 1);
+
+				indices.push_back(second);
+				indices.push_back(second + 1);
+				indices.push_back(first + 1);
+			}
+		}
+
+		return CreateRef<Mesh>(vertices, indices);
+	}
 }

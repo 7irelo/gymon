@@ -20,9 +20,22 @@ namespace Gymon {
 		static void EndScene();
 
 		static void Submit(const Ref<Shader>& shader, const Ref<VertexArray>& vertexArray,
-			const glm::mat4& transform = glm::mat4(1.0f));
+			const glm::mat4& transform = glm::mat4(1.0f), uint32_t indexCount = 0);
 
 		static RendererAPI::API GetAPI() { return RendererAPI::GetAPI(); }
+
+		// Per-frame 3D counters. Renderer2D keeps its own separate batch stats;
+		// these cover geometry submitted through Renderer::Submit.
+		struct Statistics
+		{
+			uint32_t DrawCalls = 0;
+			uint32_t MeshCount = 0;
+			uint32_t TriangleCount = 0;
+			uint32_t VertexCount = 0;
+		};
+
+		static void ResetStats();
+		static Statistics GetStats();
 	private:
 		struct SceneData
 		{

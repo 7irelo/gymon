@@ -8,6 +8,10 @@ input events, and a renderer abstraction sits on top of OpenGL.
 The included **Sandbox** application demonstrates both renderers and lets you
 switch between them at runtime from the menu bar.
 
+## Screenshots
+
+![Gymon - build, 2D and 3D rendering, layers, input and events, shaders, textures, render stats and project layout](docs/screenshots/gymon-engine.png)
+
 ## Features
 
 - **Application / Layer architecture** — overlayable layers with attach,

@@ -26,6 +26,11 @@
 #include "Gymon/Renderer/Texture.h"
 #include "Gymon/Renderer/VertexArray.h"
 #include "Gymon/Renderer/Mesh.h"
+#include "Gymon/Renderer/Material.h"
+
+// ------- Scene & Editor ---------
+#include "Gymon/Scene/Scene.h"
+#include "Gymon/Editor/SceneHierarchyPanel.h"
 
 #include "Gymon/Renderer/OrthographicCamera.h"
 #include "Gymon/Renderer/PerspectiveCamera.h"
