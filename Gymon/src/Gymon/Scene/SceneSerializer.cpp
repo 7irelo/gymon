@@ -61,6 +61,7 @@ namespace Gymon {
 			if (name == "cube")   return Mesh::CreateCube();
 			if (name == "plane")  return Mesh::CreatePlane();
 			if (name == "sphere") return Mesh::CreateSphere();
+			if (name == "cylinder") return Mesh::CreateCylinder();
 			return nullptr;
 		}
 	}

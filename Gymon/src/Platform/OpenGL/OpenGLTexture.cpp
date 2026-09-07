@@ -62,6 +62,19 @@ namespace Gymon {
 
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, ToGLWrap(m_Specification.WrapS));
 		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, ToGLWrap(m_Specification.WrapT));
+
+		if (hasMips && m_Specification.Anisotropy > 1)
+		{
+			// Core in 4.6, an ubiquitous extension before that, and the
+			// enum is the same either way. Query the driver's ceiling
+			// rather than assuming 16: asking for more is an error.
+			float maxSupported = 1.0f;
+			glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &maxSupported);
+
+			const float requested = (float)m_Specification.Anisotropy;
+			glTextureParameterf(m_RendererID, GL_TEXTURE_MAX_ANISOTROPY,
+				requested < maxSupported ? requested : maxSupported);
+		}
 	}
 
 	OpenGLTexture2D::OpenGLTexture2D(uint32_t width, uint32_t height, const TextureSpecification& spec)

@@ -1,5 +1,7 @@
 ﻿#include "EditorLayer.h"
 
+#include "RacingScene.h"
+
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <ImGuizmo.h>
@@ -33,48 +35,98 @@ void EditorLayer::OnAttach()
 	BuildScene();
 	m_Hierarchy.SetContext(m_Scene);
 
-	// Set through the controller: it owns the position and rewrites the
-	// camera's every update, so setting the camera directly would not stick.
-	m_CameraController.SetYawPitch(-108.0f, -14.0f);
-	m_CameraController.SetPosition({ 4.5f, 3.2f, 8.5f });
 }
 
 void EditorLayer::BuildScene()
 {
-	m_Scene = Gymon::CreateRef<Gymon::Scene>("Scene");
+	m_Scene = Gymon::CreateRef<Gymon::Scene>("Circuit");
 
-	auto lit = m_Shaders.Get("PBR");
+	auto pbr = m_Shaders.Get("PBR");
 
-	auto camera = m_Scene->CreateEntity("Camera", Gymon::EntityType::Camera);
-	camera->Transform.Translation = { 3.0f, 2.5f, 6.0f };
+	// Late afternoon: a low sun gives long shadows and grazing light across
+	// the road surface, which is the condition that shows a PBR renderer off.
+	auto& environment = m_Scene->GetEnvironment();
+	// Darker than the colours a sky "is": the ACES curve lifts midtones hard,
+	// and anything authored at the brightness the eye reads comes out of the
+	// tonemapper as pale grey.
+	environment.SkyColor = { 0.075f, 0.185f, 0.46f };
+	environment.HorizonColor = { 0.40f, 0.50f, 0.66f };
+	environment.GroundColor = { 0.13f, 0.12f, 0.10f };
+	environment.AmbientIntensity = 0.38f;
+	// Tight enough that shadow texels stay small near the camera: the circuit
+	// is two hundred metres across, and a frustum covering all of it would put
+	// every contact shadow well below the resolution of the map.
+	environment.ShadowDistance = 34.0f;
+	environment.Exposure = m_Exposure;
 
-	auto light = m_Scene->CreateEntity("Directional Light", Gymon::EntityType::DirectionalLight);
-	light->Transform.Rotation = { -45.0f, -30.0f, 0.0f };
-	light->LightColor = { 1.0f, 0.96f, 0.9f };
+	auto light = m_Scene->CreateEntity("Sun", Gymon::EntityType::DirectionalLight);
+	light->Transform.Rotation = { -38.0f, -125.0f, 0.0f };
+	light->LightColor = { 1.0f, 0.93f, 0.82f };
+	light->LightIntensity = 5.2f;
 
-	auto cube = m_Scene->CreateEntity("Cube", Gymon::EntityType::Mesh);
-	cube->Mesh = Gymon::Mesh::CreateCube();
-	cube->Material = Gymon::CreateRef<Gymon::Material>(lit, "Cube Material");
-	cube->Material->Albedo = { 0.85f, 0.35f, 0.30f, 1.0f };
-	cube->Material->Roughness = 0.55f;
-	cube->Transform.Translation = { -1.4f, 0.5f, 0.0f };
+	// Textures are generated once and shared: the track is four surfaces, not
+	// four hundred, so there is no reason for each entity to own a copy.
+	const auto asphalt = Gymon::ProceduralTextures::Asphalt();
+	const auto kerb = Gymon::ProceduralTextures::Kerb();
+	const auto grass = Gymon::ProceduralTextures::Grass();
+	const auto concrete = Gymon::ProceduralTextures::Concrete();
+	const auto paint = Gymon::ProceduralTextures::CarPaint({ 0.62f, 0.045f, 0.05f });
+	const auto rubber = Gymon::ProceduralTextures::Tyre();
 
-	auto sphere = m_Scene->CreateEntity("Sphere", Gymon::EntityType::Mesh);
-	sphere->Mesh = Gymon::Mesh::CreateSphere();
-	sphere->Material = Gymon::CreateRef<Gymon::Material>(lit, "Sphere Material");
-	sphere->Material->Albedo = { 0.94f, 0.78f, 0.35f, 1.0f };
-	// Polished gold: metals tint their reflection with albedo and have no
-	// diffuse term, which is the clearest demonstration of the BRDF.
-	sphere->Material->Metallic = 1.0f;
-	sphere->Material->Roughness = 0.18f;
-	sphere->Transform.Translation = { 1.4f, 0.5f, 0.0f };
+	// The scalar factors multiply the maps, so anything supplied by a texture
+	// has its factor set to 1 rather than to a value that would darken it.
+	auto makeMaterial = [&](const char* name, const Gymon::MaterialTextures& textures)
+	{
+		auto material = Gymon::CreateRef<Gymon::Material>(pbr, name);
+		material->AlbedoMap = textures.Albedo;
+		material->NormalMap = textures.Normal;
+		material->MetallicRoughnessMap = textures.MetallicRoughness;
+		material->Albedo = { 1.0f, 1.0f, 1.0f, 1.0f };
+		material->Metallic = 1.0f;
+		material->Roughness = 1.0f;
+		return material;
+	};
 
-	auto plane = m_Scene->CreateEntity("Plane", Gymon::EntityType::Mesh);
-	plane->Mesh = Gymon::Mesh::CreatePlane();
-	plane->Material = Gymon::CreateRef<Gymon::Material>(lit, "Ground Material");
-	plane->Material->Albedo = { 0.42f, 0.44f, 0.47f, 1.0f };
-	plane->Material->Roughness = 0.85f;
-	plane->Transform.Scale = { 12.0f, 1.0f, 12.0f };
+	const Racing::Spline circuit = Racing::DefaultCircuit();
+	const Racing::TrackMeshes track = Racing::BuildTrack(circuit);
+
+	auto addMesh = [&](const char* name, const Gymon::Ref<Gymon::Mesh>& mesh,
+		const Gymon::Ref<Gymon::Material>& material)
+	{
+		auto entity = m_Scene->CreateEntity(name, Gymon::EntityType::Mesh);
+		entity->Mesh = mesh;
+		entity->Material = material;
+		return entity;
+	};
+
+	addMesh("Track Surface", track.Road, makeMaterial("Asphalt", asphalt));
+	addMesh("Kerbs", track.Kerbs, makeMaterial("Kerb", kerb));
+	addMesh("Run-off", track.Verge, makeMaterial("Grass", grass));
+	addMesh("Barriers", track.Barriers, makeMaterial("Concrete", concrete));
+
+	// The infield, big enough to sit under the whole circuit so there is no
+	// void visible through the middle of the loop.
+	auto infieldMaterial = makeMaterial("Infield", grass);
+	// The plane's UVs run 0..1 across its whole extent, so without tiling one
+	// texture would be stretched over 460 metres.
+	infieldMaterial->Tiling = { 120.0f, 120.0f };
+
+	auto ground = addMesh("Infield", Gymon::Mesh::CreatePlane(), infieldMaterial);
+	ground->Transform.Translation = { 0.0f, -0.36f, 12.0f };
+	ground->Transform.Scale = { 460.0f, 1.0f, 460.0f };
+
+	const Racing::CarMeshes car = Racing::BuildCar();
+
+	auto body = addMesh("Car Body", car.Body, makeMaterial("Car Paint", paint));
+	body->Transform.Translation = track.StartPosition;
+	body->Transform.Rotation = { 0.0f, track.StartYawDegrees - 90.0f, 0.0f };
+
+	auto wheels = addMesh("Car Wheels", car.Wheels, makeMaterial("Tyre", rubber));
+	wheels->Transform = body->Transform;
+
+	// A chase view of the car on the start-finish straight.
+	m_CameraController.SetYawPitch(-6.0f, -9.0f);
+	m_CameraController.SetPosition(track.StartPosition + glm::vec3(-11.0f, 4.4f, 3.6f));
 }
 
 void EditorLayer::OnDetach()

@@ -24,9 +24,14 @@ namespace Gymon {
 		// The properties every material has, whether or not a given shader
 		// declares them. Setting a uniform a shader does not use is a no-op in
 		// GL, so this stays safe across shaders.
+		//
+		// Every one of these is uploaded unconditionally. Uniforms live on the
+		// program, not on the material, so anything left unset here would keep
+		// the value the previously bound material uploaded.
 		m_Shader->SetFloat4("u_Albedo", Albedo);
 		m_Shader->SetFloat("u_Metallic", Metallic);
 		m_Shader->SetFloat("u_Roughness", Roughness);
+		m_Shader->SetFloat2("u_Tiling", Tiling);
 
 		for (const auto& [name, value] : m_Uniforms)
 		{

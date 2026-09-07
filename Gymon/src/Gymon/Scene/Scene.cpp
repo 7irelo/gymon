@@ -131,6 +131,21 @@ namespace Gymon {
 			glm::vec3 center;
 			float radius;
 			GetBounds(center, radius);
+
+			// For a scene smaller than the shadow distance, cover all of it.
+			// For a larger one, follow the camera: put the frustum a little
+			// ahead of the eye, where the pixels that matter are.
+			if (radius > m_Environment.ShadowDistance)
+			{
+				const glm::vec3 forward = glm::normalize(glm::vec3(
+					camera.GetViewMatrix()[0][2],
+					camera.GetViewMatrix()[1][2],
+					camera.GetViewMatrix()[2][2]) * -1.0f);
+
+				center = camera.GetPosition() + forward * (m_Environment.ShadowDistance * 0.55f);
+				radius = m_Environment.ShadowDistance;
+			}
+
 			shadowMap->SetLight(lightDirection, center, radius);
 
 			shadowMap->BeginPass();

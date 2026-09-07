@@ -82,6 +82,14 @@ namespace Gymon {
 
 		float AmbientIntensity = 0.30f;
 		float Exposure = 1.0f;
+
+		// Radius, in world units, of the region around the camera the shadow
+		// map covers. Fitting the map to the whole scene instead sounds
+		// tidier, but a two-hundred-metre circuit spread over 2048 texels puts
+		// a shadow texel at seven centimetres, and every contact shadow turns
+		// to mush. Following the camera keeps the detail where it is looked
+		// at, at the cost of shadows fading out in the far distance.
+		float ShadowDistance = 55.0f;
 	};
 
 	class Scene

@@ -26,6 +26,7 @@
 #include "Gymon/Renderer/ShadowMap.h"
 #include "Gymon/Renderer/Shader.h"
 #include "Gymon/Renderer/Texture.h"
+#include "Gymon/Renderer/ProceduralTexture.h"
 #include "Gymon/Renderer/VertexArray.h"
 #include "Gymon/Renderer/Mesh.h"
 #include "Gymon/Renderer/ModelLoader.h"

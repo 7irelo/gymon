@@ -45,6 +45,9 @@ namespace Gymon {
 		// UV sphere. Defaults give a smooth-enough ball without a silly vertex
 		// count; raise the segment counts for close-ups.
 		static Ref<Mesh> CreateSphere(uint32_t latitudeSegments = 24, uint32_t longitudeSegments = 48);
+		// Capped cylinder, unit height along Y and unit diameter, so scaling
+		// it behaves the same way as the other primitives.
+		static Ref<Mesh> CreateCylinder(uint32_t segments = 32);
 	private:
 		Ref<VertexArray> m_VertexArray;
 		uint32_t m_IndexCount;

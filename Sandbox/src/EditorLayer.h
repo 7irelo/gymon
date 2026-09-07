@@ -70,7 +70,10 @@ private:
 	Gymon::Ref<Gymon::ShadowMap> m_ShadowMap;
 
 	// Editor display options, surfaced in the toolbar.
-	bool m_ShowGrid = true;
+	// Off by default now that the demo scene has real ground under it: the
+	// grid helps place things in an empty scene, and over a textured surface
+	// it is a lattice of lines in the way.
+	bool m_ShowGrid = false;
 	bool m_ShowSky = true;
 	float m_Exposure = 1.0f;
 

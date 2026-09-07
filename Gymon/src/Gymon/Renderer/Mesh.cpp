@@ -1,6 +1,8 @@
 #include "gypch.h"
 #include "Gymon/Renderer/Mesh.h"
 
+#include <cmath>
+
 namespace Gymon {
 
 	Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32_t>& indices)
@@ -98,6 +100,74 @@ namespace Gymon {
 
 		auto mesh = CreateRef<Mesh>(vertices, indices);
 		mesh->SetPrimitiveName("plane");
+		return mesh;
+	}
+
+	Ref<Mesh> Mesh::CreateCylinder(uint32_t segments)
+	{
+		segments = segments < 3 ? 3 : segments;
+
+		std::vector<Vertex> vertices;
+		std::vector<uint32_t> indices;
+
+		const float halfHeight = 0.5f;
+		const float radius = 0.5f;
+		const float twoPi = 6.28318530718f;
+
+		// The side wall and the caps do not share vertices: a shared vertex
+		// would have to pick one normal, and the whole point of a cylinder is
+		// that the rim is a hard edge.
+		const uint32_t sideStart = 0;
+		for (uint32_t i = 0; i <= segments; i++)
+		{
+			const float t = (float)i / (float)segments;
+			const float angle = t * twoPi;
+			const float x = std::cos(angle), z = std::sin(angle);
+			const glm::vec3 normal(x, 0.0f, z);
+
+			vertices.push_back({ { x * radius, -halfHeight, z * radius }, normal, { t, 0.0f } });
+			vertices.push_back({ { x * radius,  halfHeight, z * radius }, normal, { t, 1.0f } });
+		}
+
+		for (uint32_t i = 0; i < segments; i++)
+		{
+			const uint32_t base = sideStart + i * 2;
+			indices.insert(indices.end(), { base, base + 2, base + 3 });
+			indices.insert(indices.end(), { base, base + 3, base + 1 });
+		}
+
+		// Caps, as triangle fans around a centre vertex.
+		for (int side = 0; side < 2; side++)
+		{
+			const float y = side == 0 ? halfHeight : -halfHeight;
+			const glm::vec3 normal(0.0f, side == 0 ? 1.0f : -1.0f, 0.0f);
+
+			const uint32_t centre = (uint32_t)vertices.size();
+			vertices.push_back({ { 0.0f, y, 0.0f }, normal, { 0.5f, 0.5f } });
+
+			for (uint32_t i = 0; i <= segments; i++)
+			{
+				const float angle = (float)i / (float)segments * twoPi;
+				const float x = std::cos(angle), z = std::sin(angle);
+				vertices.push_back({ { x * radius, y, z * radius }, normal,
+					{ x * 0.5f + 0.5f, z * 0.5f + 0.5f } });
+			}
+
+			for (uint32_t i = 0; i < segments; i++)
+			{
+				const uint32_t a = centre + 1 + i;
+				const uint32_t b = centre + 2 + i;
+				// Wind the bottom cap the other way round so both faces point
+				// outwards.
+				if (side == 0)
+					indices.insert(indices.end(), { centre, a, b });
+				else
+					indices.insert(indices.end(), { centre, b, a });
+			}
+		}
+
+		auto mesh = CreateRef<Mesh>(vertices, indices);
+		mesh->SetPrimitiveName("cylinder");
 		return mesh;
 	}
 

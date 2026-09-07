@@ -24,6 +24,11 @@ layout(location = 2) in vec2 a_TexCoord;
 uniform mat4 u_ViewProjection;
 uniform mat4 u_Transform;
 
+// Repeats per UV unit. Meshes whose UVs run 0..1 across a large surface -- a
+// scaled ground plane, say -- would otherwise stretch one texture over the
+// whole thing.
+uniform vec2 u_Tiling = vec2(1.0, 1.0);
+
 out vec3 v_WorldPos;
 out vec3 v_Normal;
 out vec2 v_TexCoord;
@@ -39,7 +44,7 @@ void main()
 	// Inverse-transpose so non-uniform scale does not skew the normal.
 	v_Normal = mat3(transpose(inverse(u_Transform))) * a_Normal;
 
-	v_TexCoord = a_TexCoord;
+	v_TexCoord = a_TexCoord * u_Tiling;
 
 	// Computed here rather than in the fragment shader: the transform is
 	// affine, so interpolating the result is exact and saves a matrix

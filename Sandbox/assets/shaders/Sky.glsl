@@ -42,8 +42,8 @@ uniform vec3 u_CameraPosition;
 uniform vec3 u_LightDirection;
 uniform vec3 u_LightColor;
 
-uniform vec3 u_SkyColor    = vec3(0.20, 0.36, 0.68);
-uniform vec3 u_HorizonColor = vec3(0.62, 0.71, 0.84);
+uniform vec3 u_SkyColor    = vec3(0.075, 0.185, 0.46);
+uniform vec3 u_HorizonColor = vec3(0.40, 0.50, 0.66);
 uniform vec3 u_GroundColor = vec3(0.16, 0.14, 0.12);
 uniform float u_Exposure = 1.0;
 
@@ -68,7 +68,7 @@ void main()
 	// power curve compresses the gradient towards the horizon, where the real
 	// thing changes fastest.
 	float up = dir.y;
-	float skyBlend = pow(clamp(up, 0.0, 1.0), 0.62);
+	float skyBlend = pow(clamp(up, 0.0, 1.0), 0.30);
 
 	vec3 sky = mix(u_HorizonColor, u_SkyColor, skyBlend);
 

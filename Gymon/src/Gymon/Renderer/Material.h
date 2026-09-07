@@ -63,6 +63,16 @@ namespace Gymon {
 		float Metallic = 0.0f;
 		float Roughness = 0.5f;
 
+		// Texture repeats per UV unit.
+		//
+		// A first-class property rather than something a caller pokes in
+		// through Set(), because uniforms are per-program state: two materials
+		// sharing a shader share its uniforms, and one that leaves a value
+		// unset inherits whatever the last material to draw with that shader
+		// happened to leave behind. Anything a shader always reads has to be
+		// uploaded by every material, every bind.
+		glm::vec2 Tiling{ 1.0f, 1.0f };
+
 		// Binds the shader, uploads Albedo/Shininess and every stored uniform,
 		// and binds the texture if there is one.
 		void Bind() const;

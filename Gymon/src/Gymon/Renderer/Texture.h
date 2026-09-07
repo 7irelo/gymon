@@ -43,6 +43,19 @@ namespace Gymon {
 		// out washed out. Data textures -- normal maps, metallic-roughness,
 		// masks -- hold raw numbers, not colours, and must stay untouched.
 		bool SRGB = false;
+
+		// Maximum anisotropy, clamped to what the driver supports. 1 is plain
+		// trilinear filtering.
+		//
+		// This matters more than it sounds for a ground plane: a road seen at
+		// a grazing angle has a huge texture gradient along the view direction
+		// and almost none across it, so trilinear filtering has to pick a mip
+		// for the larger of the two and blurs the surface into flat grey.
+		// Anisotropic filtering is the difference between a road you can see
+		// the aggregate in and a road that is a grey ribbon.
+		//
+		// Only meaningful together with GenerateMips.
+		uint32_t Anisotropy = 1;
 	};
 
 	class Texture
