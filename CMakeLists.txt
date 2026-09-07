@@ -31,7 +31,7 @@ endforeach()
 
 set(GY_VENDOR "${CMAKE_CURRENT_SOURCE_DIR}/Gymon/vendor")
 
-foreach(_dep GLFW glm imgui)
+foreach(_dep GLFW glm imgui ImGuizmo)
     if(NOT EXISTS "${GY_VENDOR}/${_dep}/CMakeLists.txt" AND NOT EXISTS "${GY_VENDOR}/${_dep}/imgui.h")
         message(FATAL_ERROR
             "Gymon/vendor/${_dep} is empty. Run:\n"
@@ -61,6 +61,12 @@ add_library(ImGui STATIC
     "${GY_VENDOR}/imgui/imgui_demo.cpp"
 )
 target_include_directories(ImGui PUBLIC "${GY_VENDOR}/imgui")
+
+# ImGuizmo draws the translate/rotate/scale handles. It builds against the
+# ImGui headers, so it links ImGui rather than duplicating its sources.
+add_library(ImGuizmo STATIC "${GY_VENDOR}/ImGuizmo/src/ImGuizmo.cpp")
+target_include_directories(ImGuizmo PUBLIC "${GY_VENDOR}/ImGuizmo/src")
+target_link_libraries(ImGuizmo PUBLIC ImGui)
 
 add_library(stb_image STATIC "${GY_VENDOR}/stb_image/stb_image.cpp")
 target_include_directories(stb_image PUBLIC "${GY_VENDOR}/stb_image")
@@ -111,7 +117,7 @@ elseif(APPLE)
     target_compile_definitions(Gymon PUBLIC GY_PLATFORM_MACOS)
 endif()
 
-target_link_libraries(Gymon PUBLIC glfw Glad ImGui stb_image)
+target_link_libraries(Gymon PUBLIC glfw Glad ImGui ImGuizmo stb_image)
 
 if(WIN32)
     target_link_libraries(Gymon PUBLIC opengl32)

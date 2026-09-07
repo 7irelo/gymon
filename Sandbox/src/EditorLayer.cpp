@@ -1,8 +1,11 @@
 ﻿#include "EditorLayer.h"
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 
 #include <filesystem>
+
+#include <glm/gtc/type_ptr.hpp>
 
 EditorLayer::EditorLayer()
 	: Layer("EditorLayer"), m_CameraController(1280.0f / 720.0f, 45.0f)
@@ -168,6 +171,19 @@ void EditorLayer::DrawMenuBar()
 {
 	if (ImGui::BeginMainMenuBar())
 	{
+		if (ImGui::BeginMenu("Gizmo"))
+		{
+			if (ImGui::MenuItem("None", "Q", m_GizmoOperation == -1))
+				m_GizmoOperation = -1;
+			if (ImGui::MenuItem("Translate", "W", m_GizmoOperation == (int)ImGuizmo::TRANSLATE))
+				m_GizmoOperation = (int)ImGuizmo::TRANSLATE;
+			if (ImGui::MenuItem("Rotate", "E", m_GizmoOperation == (int)ImGuizmo::ROTATE))
+				m_GizmoOperation = (int)ImGuizmo::ROTATE;
+			if (ImGui::MenuItem("Scale", "R", m_GizmoOperation == (int)ImGuizmo::SCALE))
+				m_GizmoOperation = (int)ImGuizmo::SCALE;
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("Scene"))
 		{
 			if (ImGui::MenuItem("Save Scene", "Ctrl+S"))
@@ -194,6 +210,9 @@ void EditorLayer::DrawViewport()
 	m_ViewportFocused = ImGui::IsWindowFocused();
 	m_ViewportHovered = ImGui::IsWindowHovered();
 
+	const ImVec2 viewportMin = ImGui::GetWindowPos();
+	const ImVec2 viewportOffset = ImGui::GetCursorPos();
+
 	const ImVec2 available = ImGui::GetContentRegionAvail();
 	m_ViewportSize = { available.x, available.y };
 
@@ -204,6 +223,42 @@ void EditorLayer::DrawViewport()
 		available,
 		ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
 
+	// Gizmo, drawn over the viewport image.
+	auto selected = m_Hierarchy.GetSelected();
+	if (selected && m_GizmoOperation >= 0)
+	{
+		ImGuizmo::SetOrthographic(false);
+		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetRect(
+			viewportMin.x + viewportOffset.x, viewportMin.y + viewportOffset.y,
+			available.x, available.y);
+
+		const auto& camera = m_CameraController.GetCamera();
+		const glm::mat4 view = camera.GetViewMatrix();
+		const glm::mat4 projection = camera.GetProjectionMatrix();
+
+		glm::mat4 transform = selected->Transform.GetTransform();
+
+		ImGuizmo::Manipulate(
+			glm::value_ptr(view), glm::value_ptr(projection),
+			(ImGuizmo::OPERATION)m_GizmoOperation, ImGuizmo::LOCAL,
+			glm::value_ptr(transform));
+
+		if (ImGuizmo::IsUsing())
+		{
+			// Decompose straight back into the same translation/euler/scale
+			// the inspector edits, so dragging a handle and typing a number
+			// stay in agreement.
+			float translation[3], rotation[3], scale[3];
+			ImGuizmo::DecomposeMatrixToComponents(
+				glm::value_ptr(transform), translation, rotation, scale);
+
+			selected->Transform.Translation = { translation[0], translation[1], translation[2] };
+			selected->Transform.Rotation = { rotation[0], rotation[1], rotation[2] };
+			selected->Transform.Scale = { scale[0], scale[1], scale[2] };
+		}
+	}
+
 	ImGui::End();
 	ImGui::PopStyleVar();
 }
@@ -212,6 +267,10 @@ void EditorLayer::OnImGuiRender()
 {
 	if (!m_Active)
 		return;
+
+	// ImGuizmo piggybacks on the ImGui frame, so it has to be told a new one
+	// started before anything tries to draw a gizmo.
+	ImGuizmo::BeginFrame();
 
 	DrawMenuBar();
 	m_Hierarchy.OnImGuiRender();
@@ -226,6 +285,25 @@ void EditorLayer::OnEvent(Gymon::Event& e)
 		return;
 
 	m_CameraController.OnEvent(e);
+
+	Gymon::EventDispatcher dispatcher(e);
+	dispatcher.Dispatch<Gymon::KeyPressedEvent>([this](Gymon::KeyPressedEvent& event)
+	{
+		// Gizmo shortcuts, only while the viewport has focus and nothing is
+		// mid-drag, so typing in an inspector field cannot switch tools.
+		if (!m_ViewportFocused || ImGuizmo::IsUsing() || event.IsRepeat())
+			return false;
+
+		switch (event.GetKeyCode())
+		{
+			case Gymon::Key::Q: m_GizmoOperation = -1; return true;
+			case Gymon::Key::W: m_GizmoOperation = (int)ImGuizmo::TRANSLATE; return true;
+			case Gymon::Key::E: m_GizmoOperation = (int)ImGuizmo::ROTATE; return true;
+			case Gymon::Key::R: m_GizmoOperation = (int)ImGuizmo::SCALE; return true;
+			default: return false;
+		}
+	});
 }
+
 
 
