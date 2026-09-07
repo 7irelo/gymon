@@ -25,6 +25,16 @@ namespace Gymon {
 
 		virtual const std::string& GetName() const = 0;
 
+		// Hot-reload. Shaders created from source rather than a file report
+		// false from IsReloadable() and ignore Reload().
+		virtual bool IsReloadable() const = 0;
+		// Recompiles from disk. On failure the previously compiled program is
+		// kept, so a typo in a shader leaves the app rendering rather than
+		// dropping to a black screen.
+		virtual bool Reload() = 0;
+		// True when the file's modification time has moved since it was loaded.
+		virtual bool HasSourceChanged() const = 0;
+
 		static Ref<Shader> Create(const std::string& filepath);
 		static Ref<Shader> Create(const std::string& name, const std::string& vertexSrc, const std::string& fragmentSrc);
 	};
@@ -40,6 +50,11 @@ namespace Gymon {
 		Ref<Shader> Get(const std::string& name);
 
 		bool Exists(const std::string& name) const;
+
+		// Recompiles every file-backed shader whose source changed on disk.
+		// Returns the number reloaded. Cheap enough to call once a frame: it
+		// only stats files, and only compiles when the timestamp moved.
+		uint32_t ReloadChanged();
 	private:
 		std::unordered_map<std::string, Ref<Shader>> m_Shaders;
 	};

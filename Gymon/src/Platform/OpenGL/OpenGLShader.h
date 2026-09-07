@@ -30,6 +30,10 @@ namespace Gymon {
 
 		virtual const std::string& GetName() const override { return m_Name; }
 
+		virtual bool IsReloadable() const override { return !m_FilePath.empty(); }
+		virtual bool Reload() override;
+		virtual bool HasSourceChanged() const override;
+
 		void UploadUniformInt(const std::string& name, int value);
 		void UploadUniformIntArray(const std::string& name, int* values, uint32_t count);
 		void UploadUniformFloat(const std::string& name, float value);
@@ -42,8 +46,16 @@ namespace Gymon {
 		std::string ReadFile(const std::string& filepath);
 		std::unordered_map<GLenum, std::string> PreProcess(const std::string& source);
 		void Compile(const std::unordered_map<GLenum, std::string>& shaderSources);
+		// Compiles into a fresh program and returns it, leaving m_RendererID
+		// alone. Returns 0 on failure so the caller can keep the old program.
+		uint32_t CompileProgram(const std::unordered_map<GLenum, std::string>& shaderSources, bool logErrors);
+		// Last write time of m_FilePath, or 0 when it cannot be read.
+		uint64_t SourceTimestamp() const;
 	private:
 		uint32_t m_RendererID;
 		std::string m_Name;
+		// Empty for shaders built from in-memory source; those cannot reload.
+		std::string m_FilePath;
+		uint64_t m_SourceTimestamp = 0;
 	};
 }

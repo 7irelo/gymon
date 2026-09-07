@@ -1,6 +1,7 @@
 #include "gypch.h"
 #include "Platform/OpenGL/OpenGLShader.h"
 
+#include <filesystem>
 #include <fstream>
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
@@ -19,10 +20,12 @@ namespace Gymon {
 	}
 
 	OpenGLShader::OpenGLShader(const std::string& filepath)
+		: m_FilePath(filepath)
 	{
 		std::string source = ReadFile(filepath);
 		auto shaderSources = PreProcess(source);
 		Compile(shaderSources);
+		m_SourceTimestamp = SourceTimestamp();
 
 		// Extract name from filepath: assets/shaders/Texture.glsl -> Texture
 		auto lastSlash = filepath.find_last_of("/\\");
@@ -102,10 +105,21 @@ namespace Gymon {
 
 	void OpenGLShader::Compile(const std::unordered_map<GLenum, std::string>& shaderSources)
 	{
+		uint32_t program = CompileProgram(shaderSources, true);
+		GY_CORE_ASSERT(program, "Shader compilation failure!");
+		m_RendererID = program;
+	}
+
+	uint32_t OpenGLShader::CompileProgram(const std::unordered_map<GLenum, std::string>& shaderSources, bool logErrors)
+	{
 		GLuint program = glCreateProgram();
 		GY_CORE_ASSERT(shaderSources.size() <= 2, "We only support 2 shaders for now");
-		std::array<GLenum, 2> glShaderIDs;
+		// Only the entries actually filled are iterated on cleanup; the old
+		// code walked the whole fixed array and could delete an uninitialised
+		// name when a shader had a single stage.
+		std::array<GLenum, 2> glShaderIDs{};
 		int glShaderIDIndex = 0;
+		bool failed = false;
 		for (auto& kv : shaderSources)
 		{
 			GLenum type = kv.first;
@@ -130,8 +144,9 @@ namespace Gymon {
 
 				glDeleteShader(shader);
 
-				GY_CORE_ERROR("{0}", infoLog.data());
-				GY_CORE_ASSERT(false, "Shader compilation failure!");
+				if (logErrors)
+					GY_CORE_ERROR("Shader compile failed ({0}):\n{1}", m_Name, infoLog.data());
+				failed = true;
 				break;
 			}
 
@@ -139,7 +154,16 @@ namespace Gymon {
 			glShaderIDs[glShaderIDIndex++] = shader;
 		}
 
-		m_RendererID = program;
+		if (failed)
+		{
+			for (int i = 0; i < glShaderIDIndex; i++)
+			{
+				glDetachShader(program, glShaderIDs[i]);
+				glDeleteShader(glShaderIDs[i]);
+			}
+			glDeleteProgram(program);
+			return 0;
+		}
 
 		glLinkProgram(program);
 
@@ -155,19 +179,77 @@ namespace Gymon {
 
 			glDeleteProgram(program);
 
-			for (auto id : glShaderIDs)
-				glDeleteShader(id);
+			for (int i = 0; i < glShaderIDIndex; i++)
+				glDeleteShader(glShaderIDs[i]);
 
-			GY_CORE_ERROR("{0}", infoLog.data());
-			GY_CORE_ASSERT(false, "Shader link failure!");
-			return;
+			if (logErrors)
+				GY_CORE_ERROR("Shader link failed ({0}):\n{1}", m_Name, infoLog.data());
+			return 0;
 		}
 
-		for (auto id : glShaderIDs)
+		for (int i = 0; i < glShaderIDIndex; i++)
 		{
-			glDetachShader(program, id);
-			glDeleteShader(id);
+			glDetachShader(program, glShaderIDs[i]);
+			glDeleteShader(glShaderIDs[i]);
 		}
+
+		return program;
+	}
+
+	uint64_t OpenGLShader::SourceTimestamp() const
+	{
+		if (m_FilePath.empty())
+			return 0;
+
+		std::error_code ec;
+		auto time = std::filesystem::last_write_time(m_FilePath, ec);
+		if (ec)
+			return 0;
+
+		return static_cast<uint64_t>(time.time_since_epoch().count());
+	}
+
+	bool OpenGLShader::HasSourceChanged() const
+	{
+		if (m_FilePath.empty())
+			return false;
+
+		const uint64_t current = SourceTimestamp();
+		return current != 0 && current != m_SourceTimestamp;
+	}
+
+	bool OpenGLShader::Reload()
+	{
+		if (m_FilePath.empty())
+			return false;
+
+		// Take the new timestamp first. If the recompile fails we still want to
+		// stop retrying every frame until the file is touched again.
+		const uint64_t stamp = SourceTimestamp();
+
+		const std::string source = ReadFile(m_FilePath);
+		if (source.empty())
+		{
+			m_SourceTimestamp = stamp;
+			return false;
+		}
+
+		const uint32_t program = CompileProgram(PreProcess(source), true);
+		if (program == 0)
+		{
+			// Compilation failed: keep the previously linked program so the
+			// application carries on rendering with the last good shader.
+			GY_CORE_WARN("Shader '{0}' failed to reload; keeping previous program", m_Name);
+			m_SourceTimestamp = stamp;
+			return false;
+		}
+
+		glDeleteProgram(m_RendererID);
+		m_RendererID = program;
+		m_SourceTimestamp = stamp;
+
+		GY_CORE_INFO("Reloaded shader '{0}'", m_Name);
+		return true;
 	}
 
 	void OpenGLShader::Bind() const

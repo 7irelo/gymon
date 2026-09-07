@@ -62,6 +62,18 @@ namespace Gymon {
 		return m_Shaders[name];
 	}
 
+	uint32_t ShaderLibrary::ReloadChanged()
+	{
+		uint32_t reloaded = 0;
+		for (auto& kv : m_Shaders)
+		{
+			auto& shader = kv.second;
+			if (shader->IsReloadable() && shader->HasSourceChanged() && shader->Reload())
+				reloaded++;
+		}
+		return reloaded;
+	}
+
 	bool ShaderLibrary::Exists(const std::string& name) const
 	{
 		return m_Shaders.find(name) != m_Shaders.end();
