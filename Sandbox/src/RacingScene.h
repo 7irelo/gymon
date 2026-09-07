@@ -47,6 +47,10 @@ namespace Racing {
 		Gymon::Ref<Gymon::Mesh> Kerbs;
 		Gymon::Ref<Gymon::Mesh> Verge;
 		Gymon::Ref<Gymon::Mesh> Barriers;
+		// Painted lines: the white edge on each side and the start/finish
+		// band. Their own mesh because paint is a different material from the
+		// asphalt under it, not a different colour of it.
+		Gymon::Ref<Gymon::Mesh> Markings;
 
 		// Where the car should start, and which way it should face.
 		glm::vec3 StartPosition{ 0.0f };
@@ -70,6 +74,10 @@ namespace Racing {
 	{
 		Gymon::Ref<Gymon::Mesh> Body;
 		Gymon::Ref<Gymon::Mesh> Wheels;
+		// The greenhouse. Separate because glass is dark and smooth where
+		// paint is coloured and matte, and because a car without windows
+		// reads as a lozenge however good its silhouette is.
+		Gymon::Ref<Gymon::Mesh> Glass;
 	};
 
 	CarMeshes BuildCar();

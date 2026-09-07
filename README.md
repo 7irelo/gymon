@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="branding/gymon-logo.png" alt="Gymon Game Engine" width="380">
+</p>
+
 # Gymon Engine
 
 Gymon is a lightweight 2D/3D game engine written in modern C++ (C++20) on an
@@ -9,6 +13,14 @@ The included **Sandbox** application demonstrates both renderers and lets you
 switch between them at runtime from the menu bar.
 
 ## Screenshots
+
+The editor with the racing demo. Everything in the viewport is generated in
+code: the circuit is a lofted spline, the car is a swept hull, and the asphalt,
+kerbing, grass and paint are procedural PBR texture sets. Shading is
+metallic-roughness with directional shadows, a procedural sky that also drives
+the ambient and specular environment terms, 4x MSAA and bloom:
+
+![The Gymon editor running the racing demo: a procedurally generated circuit and car](docs/screenshots/racing-demo.png)
 
 ![Gymon - build, 2D and 3D rendering, layers, input and events, shaders, textures, render stats and project layout](docs/screenshots/gymon-engine.png)
 
@@ -34,10 +46,30 @@ base colour and its baked node transform:
   a GLSL shader system (with `#type` section preprocessing and uniform helpers).
 - **2D renderer** — a batched `Renderer2D` for colored/textured/rotated quads,
   with an orthographic camera controller and live draw-call statistics.
-- **3D rendering** — indexed `Mesh` primitives (cube, plane), a free-look
-  perspective camera controller (WASD + mouse look + scroll zoom) and a Phong
-  lighting shader.
-- **Textures** — `Texture2D` loaded via stb_image.
+- **3D rendering** — indexed `Mesh` primitives (cube, plane, sphere, cylinder),
+  glTF import, a free-look perspective camera controller (WASD + mouse look +
+  scroll zoom), and a scene of entities with JSON serialisation.
+- **Physically based shading** — Cook-Torrance specular (GGX, Smith,
+  Fresnel-Schlick) on the metallic-roughness workflow, with normal mapping,
+  correct sRGB/linear handling and ACES tonemapping.
+- **Directional shadow mapping** — a depth pass fitted to the camera's
+  neighbourhood, sampled with 5x5 PCF and a slope-scaled bias.
+- **Procedural sky** — an analytic gradient with a sun disc, which also
+  supplies the diffuse and specular ambient terms so lit surfaces sit in their
+  background instead of being tuned against it.
+- **HDR pipeline** — a float, multisampled scene target, a thresholded and
+  separably blurred bloom chain, and a single composite pass that owns
+  exposure, tonemapping and gamma.
+- **Procedural textures** — tileable value-noise fBm generating albedo,
+  Sobel-derived normal and packed metallic-roughness maps for asphalt, kerbing,
+  grass, concrete, car paint, road paint and tyre rubber.
+- **Editor** — a Dear ImGui dockspace with a scene hierarchy, an inspector,
+  ImGuizmo transform gizmos, a framebuffer-backed viewport, an infinite ground
+  grid, shader hot-reload and live render statistics.
+- **Textures** — `Texture2D` with mipmapping, anisotropic filtering, sRGB
+  storage and configurable sampler state, loaded via stb_image.
+- **Screenshots** — `--screenshot <path>` renders a set number of frames and
+  writes a PNG, so the renderer can be checked from a script.
 - **Dear ImGui** integration (docking branch) through the GLFW + OpenGL3
   backends for in-engine tooling and debug UI.
 

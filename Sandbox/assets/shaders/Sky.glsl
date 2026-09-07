@@ -45,14 +45,8 @@ uniform vec3 u_LightColor;
 uniform vec3 u_SkyColor    = vec3(0.075, 0.185, 0.46);
 uniform vec3 u_HorizonColor = vec3(0.40, 0.50, 0.66);
 uniform vec3 u_GroundColor = vec3(0.16, 0.14, 0.12);
-uniform float u_Exposure = 1.0;
-
-vec3 ACESFilm(vec3 x)
-{
-	const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
-	return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
-}
-
+// The sun disc is deliberately allowed far above 1: it is the one thing in
+// the frame that should saturate the sensor, and the bloom pass needs it to.
 void main()
 {
 	// Unproject two points on the same ray and subtract: this recovers the
@@ -82,7 +76,6 @@ void main()
 	float belowBlend = smoothstep(0.0, -0.06, up);
 	vec3 ground = mix(u_HorizonColor * 0.45, u_GroundColor, smoothstep(0.0, -0.35, up));
 
-	vec3 hdr = mix(sky + sun, ground, belowBlend);
-
-	color = vec4(pow(ACESFilm(hdr * u_Exposure), vec3(1.0 / 2.2)), 1.0);
+	// Linear, unbounded: Composite.glsl exposes and tonemaps.
+	color = vec4(mix(sky + sun, ground, belowBlend), 1.0);
 }

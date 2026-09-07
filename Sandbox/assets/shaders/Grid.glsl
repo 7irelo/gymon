@@ -84,7 +84,9 @@ void main()
 	if (distanceFade <= 0.0)
 		discard;
 
-	vec3 lineColor = vec3(0.30);
+	// Linear, because the target is now a linear HDR buffer: an sRGB-looking
+	// 0.3 would come out of the tonemapper considerably brighter than intended.
+	vec3 lineColor = vec3(0.075);
 	float alpha = fine * 0.28 + coarse * 0.45;
 
 	// World axes, coloured the way every DCC tool colours them: X red, Z blue.
@@ -93,12 +95,12 @@ void main()
 	vec2 axisWidth = fwidth(hit.xz) * 1.2;
 	if (abs(hit.z) < axisWidth.y)
 	{
-		lineColor = vec3(0.75, 0.22, 0.25);
+		lineColor = vec3(0.52, 0.04, 0.05);
 		alpha = max(alpha, 0.85);
 	}
 	else if (abs(hit.x) < axisWidth.x)
 	{
-		lineColor = vec3(0.22, 0.42, 0.85);
+		lineColor = vec3(0.04, 0.14, 0.68);
 		alpha = max(alpha, 0.85);
 	}
 

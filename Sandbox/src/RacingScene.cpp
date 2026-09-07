@@ -220,7 +220,7 @@ namespace Racing {
 
 	TrackMeshes BuildTrack(const Spline& spline, uint32_t samples, float roadHalfWidth)
 	{
-		MeshBuilder road, kerbs, verge, barriers;
+		MeshBuilder road, kerbs, verge, barriers, markings;
 
 		const float kerbWidth = 1.1f;
 		const float kerbRise = 0.09f;
@@ -322,6 +322,42 @@ namespace Racing {
 		addStrip(verge, -barrierOffset, -roadHalfWidth - kerbWidth, -0.35f, kerbRise, 6.0f, 10.0f);
 		addStrip(verge, roadHalfWidth + kerbWidth, barrierOffset, kerbRise, -0.35f, 6.0f, 10.0f);
 
+		// Painted edge lines, set in from the kerb the way a circuit paints
+		// them, and lifted a few millimetres so they never z-fight the road.
+		const float lineInset = 0.28f;
+		const float lineWidth = 0.16f;
+		const float paintLift = 0.035f;
+
+		addStrip(markings, -roadHalfWidth + lineInset, -roadHalfWidth + lineInset + lineWidth,
+			paintLift, paintLift, 1.0f, 3.0f);
+		addStrip(markings, roadHalfWidth - lineInset - lineWidth, roadHalfWidth - lineInset,
+			paintLift, paintLift, 1.0f, 3.0f);
+
+		// Start/finish line: a band across the full width, placed far enough
+		// along the straight that a car sitting on the grid is behind it.
+		{
+			const uint32_t lineStart = ringCount / 20;
+			const uint32_t lineEnd = lineStart + 1;
+
+			for (uint32_t i = lineStart; i < lineEnd && i + 1 < ringCount; i++)
+			{
+				const Ring& a = rings[i];
+				const Ring& b = rings[i + 1];
+
+				const glm::vec3 a0 = a.Position - a.Right * roadHalfWidth + a.Up * paintLift;
+				const glm::vec3 a1 = a.Position + a.Right * roadHalfWidth + a.Up * paintLift;
+				const glm::vec3 b0 = b.Position - b.Right * roadHalfWidth + b.Up * paintLift;
+				const glm::vec3 b1 = b.Position + b.Right * roadHalfWidth + b.Up * paintLift;
+
+				const uint32_t i0 = markings.Add(a0, a.Up, { 0.0f, 0.0f });
+				const uint32_t i1 = markings.Add(a1, a.Up, { 1.0f, 0.0f });
+				const uint32_t i2 = markings.Add(b1, b.Up, { 1.0f, 1.0f });
+				const uint32_t i3 = markings.Add(b0, b.Up, { 0.0f, 1.0f });
+
+				markings.Quad(i0, i1, i2, i3);
+			}
+		}
+
 		// Barrier walls, as vertical strips at the edge of the run-off.
 		for (int side = 0; side < 2; side++)
 		{
@@ -360,6 +396,7 @@ namespace Racing {
 		result.Kerbs = kerbs.Build();
 		result.Verge = verge.Build();
 		result.Barriers = barriers.Build();
+		result.Markings = markings.Build();
 
 		// Start on the straight, a little to the inside, facing the way the
 		// spline runs.
@@ -372,7 +409,7 @@ namespace Racing {
 
 	CarMeshes BuildCar()
 	{
-		MeshBuilder body, wheels;
+		MeshBuilder body, wheels, glass;
 
 		// Overall dimensions of a GT-class car, in metres. The origin is on
 		// the ground at the centre of the wheelbase, which is the sane place
@@ -400,54 +437,80 @@ namespace Racing {
 		};
 
 		const int sectionCount = (int)(sizeof(sections) / sizeof(sections[0]));
-		const int ringResolution = 20;
+		const int ringResolution = 24;
 
 		// Superellipse cross-section: a rounded rectangle, which is what a car
 		// body actually is in section. An ellipse would be too soft and a
 		// rectangle too hard.
-		auto sectionPoint = [](float halfWidth, float halfHeight, float centreY, float angle)
+		auto sectionPoint = [](const Section& section, float angle)
 		{
 			const float c = std::cos(angle), s = std::sin(angle);
 			const float exponent = 2.0f / 3.4f;
 
-			const float x = std::copysign(std::pow(std::abs(c), exponent), c) * halfWidth;
-			const float y = std::copysign(std::pow(std::abs(s), exponent), s) * halfHeight;
+			const float x = std::copysign(std::pow(std::abs(c), exponent), c) * section.halfWidth;
+			const float y = std::copysign(std::pow(std::abs(s), exponent), s) * section.halfHeight;
 
 			// Flatten the underside: a car has a floor, not a rounded belly.
-			return glm::vec2(x, centreY + (y < 0.0f ? y * 0.55f : y));
+			return glm::vec2(x, section.centreY + (y < 0.0f ? y * 0.55f : y));
 		};
 
-		std::vector<std::vector<uint32_t>> ringIndices;
-		ringIndices.reserve(sectionCount);
+		// Positions first, normals second.
+		//
+		// An earlier version guessed each normal from the direction out of the
+		// section's centre, which ignores how fast the hull is widening or
+		// rising along its length. A wrong normal on a smooth, shiny surface
+		// is not subtle: it puts a dark band down the side of the car where
+		// the shading disagrees with the shape.
+		std::vector<std::vector<glm::vec3>> positions(sectionCount);
 
 		for (int s = 0; s < sectionCount; s++)
 		{
 			const Section& section = sections[s];
 			const float x = -halfLength + section.t * length;
 
-			std::vector<uint32_t> ring;
-			ring.reserve(ringResolution);
-
+			positions[s].reserve(ringResolution);
 			for (int i = 0; i < ringResolution; i++)
 			{
 				const float angle = (float)i / (float)ringResolution * 2.0f * kPi;
-				const glm::vec2 point = sectionPoint(section.halfWidth, section.halfHeight,
-					section.centreY, angle);
-
-				// Normal from the section's own gradient, approximated by the
-				// direction from the section centre. Good enough for a smooth
-				// convex hull and far simpler than accumulating face normals.
-				const glm::vec3 position(x, point.y, point.x);
-				const glm::vec3 normal = glm::normalize(glm::vec3(
-					(s == 0 ? -0.6f : (s == sectionCount - 1 ? 0.6f : 0.0f)),
-					point.y - section.centreY,
-					point.x));
-
-				ring.push_back(body.Add(position, normal,
-					{ (float)i / (float)ringResolution, section.t * 2.0f }));
+				const glm::vec2 point = sectionPoint(section, angle);
+				positions[s].push_back(glm::vec3(x, point.y, point.x));
 			}
+		}
 
-			ringIndices.push_back(std::move(ring));
+		// Central differences across the position grid: the cross product of
+		// the two surface tangents is the true normal of the lofted surface.
+		auto surfaceNormal = [&](int s, int i)
+		{
+			const int prevSection = s > 0 ? s - 1 : s;
+			const int nextSection = s < sectionCount - 1 ? s + 1 : s;
+			const int prevRing = (i - 1 + ringResolution) % ringResolution;
+			const int nextRing = (i + 1) % ringResolution;
+
+			const glm::vec3 alongLength = positions[nextSection][i] - positions[prevSection][i];
+			const glm::vec3 aroundRing = positions[s][nextRing] - positions[s][prevRing];
+
+			glm::vec3 normal = glm::cross(aroundRing, alongLength);
+			const float lengthSquared = glm::dot(normal, normal);
+			if (lengthSquared < 1e-12f)
+				return glm::vec3(0.0f, 1.0f, 0.0f);
+
+			normal = normal / std::sqrt(lengthSquared);
+
+			// Point outwards, away from the section's centre line.
+			const glm::vec3 centre(positions[s][i].x, sections[s].centreY, 0.0f);
+			return glm::dot(normal, positions[s][i] - centre) < 0.0f ? -normal : normal;
+		};
+
+		std::vector<std::vector<uint32_t>> ringIndices(sectionCount);
+
+		for (int s = 0; s < sectionCount; s++)
+		{
+			ringIndices[s].reserve(ringResolution);
+			for (int i = 0; i < ringResolution; i++)
+			{
+				ringIndices[s].push_back(body.Add(positions[s][i], surfaceNormal(s, i),
+					{ (float)i / (float)ringResolution, sections[s].t * 2.0f }));
+			}
 		}
 
 		for (int s = 0; s + 1 < sectionCount; s++)
@@ -471,13 +534,73 @@ namespace Racing {
 
 			const uint32_t centre = body.Add({ x, section.centreY, 0.0f }, normal, { 0.5f, 0.5f });
 
+			// Its own ring of vertices carrying the cap's flat normal: sharing
+			// the hull's smooth normals here would round the nose off into the
+			// bodywork instead of leaving a defined edge.
+			//
+			// The UVs are a radial projection of the cap rather than a
+			// constant. A face whose vertices all share one UV has a zero UV
+			// derivative, and any shader deriving a tangent basis from screen
+			// -space derivatives then normalises a zero vector.
+			std::vector<uint32_t> rim;
+			rim.reserve(ringResolution);
+			for (int i = 0; i < ringResolution; i++)
+			{
+				const float angle = (float)i / (float)ringResolution * 2.0f * kPi;
+				rim.push_back(body.Add(positions[s][i], normal,
+					{ std::cos(angle) * 0.5f + 0.5f, std::sin(angle) * 0.5f + 0.5f }));
+			}
+
 			for (int i = 0; i < ringResolution; i++)
 			{
 				const int next = (i + 1) % ringResolution;
 				if (end == 0)
-					body.Triangle(centre, ringIndices[s][next], ringIndices[s][i]);
+					body.Triangle(centre, rim[next], rim[i]);
 				else
-					body.Triangle(centre, ringIndices[s][i], ringIndices[s][next]);
+					body.Triangle(centre, rim[i], rim[next]);
+			}
+		}
+
+		// The greenhouse: a shell just inside the hull over the cabin
+		// sections. Its own mesh so it can be dark, smooth glass rather than
+		// paint, which is what makes the shape read as a car at a glance.
+		{
+			const int glassFirst = 3;
+			const int glassLast = 6;
+			// Just proud of the hull rather than inside it: the bodywork is a
+			// closed surface, so a canopy tucked within it would never be
+			// seen. A few millimetres is enough to win the depth test without
+			// leaving a visible gap at the edges.
+			const float inset = 1.008f;
+
+			// Only the upper part of each ring is glazed.
+			const int glassStart = 2;
+			const int glassEnd = ringResolution / 2 - 2;
+
+			std::vector<std::vector<uint32_t>> glassIndices(glassLast - glassFirst + 1);
+
+			for (int s = glassFirst; s <= glassLast; s++)
+			{
+				for (int i = glassStart; i <= glassEnd; i++)
+				{
+					const glm::vec3 hull = positions[s][i];
+					const glm::vec3 centre(hull.x, sections[s].centreY, 0.0f);
+					const glm::vec3 position = centre + (hull - centre) * inset;
+
+					glassIndices[s - glassFirst].push_back(
+						glass.Add(position, surfaceNormal(s, i),
+							{ (float)i / (float)ringResolution, sections[s].t }));
+				}
+			}
+
+			for (int s = 0; s + 1 < (int)glassIndices.size(); s++)
+			{
+				for (size_t i = 0; i + 1 < glassIndices[s].size(); i++)
+				{
+					glass.Quad(
+						glassIndices[s][i], glassIndices[s][i + 1],
+						glassIndices[s + 1][i + 1], glassIndices[s + 1][i]);
+				}
 			}
 		}
 
@@ -490,16 +613,19 @@ namespace Racing {
 		// Front splitter.
 		AddBox(body, { -halfLength + 0.10f, 0.20f, 0.0f }, { 0.16f, 0.02f, 0.90f });
 
+		// Side sills, which give the flanks a line and close the gap between
+		// the floor and the road.
+		AddBox(body, { 0.10f, 0.26f, 0.86f }, { 1.30f, 0.06f, 0.06f });
+		AddBox(body, { 0.10f, 0.26f, -0.86f }, { 1.30f, 0.06f, 0.06f });
+
 		// Wing mirrors.
 		AddBox(body, { -0.30f, 0.80f, 0.92f }, { 0.09f, 0.05f, 0.10f });
 		AddBox(body, { -0.30f, 0.80f, -0.92f }, { 0.09f, 0.05f, 0.10f });
 
-		// Wheels, inset slightly so they sit under the arches rather than
-		// proud of the bodywork.
+		// Wheels, set wider than the body is at axle height so they sit proud
+		// of the arches the way they do on anything with a wide track.
 		const float axleFront = -halfLength + 1.00f;
 		const float axleRear = halfLength - 1.05f;
-		// Wider than the body is at axle height, so the wheels sit proud of
-		// the arches the way they do on anything with a wide track.
 		const float track = 0.95f;
 
 		AddWheel(wheels, { axleFront, wheelRadius,  track }, wheelRadius, wheelHalfWidth);
@@ -510,6 +636,7 @@ namespace Racing {
 		CarMeshes result;
 		result.Body = body.Build();
 		result.Wheels = wheels.Build();
+		result.Glass = glass.Build();
 		return result;
 	}
 }

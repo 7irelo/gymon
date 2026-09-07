@@ -94,6 +94,10 @@ namespace Gymon {
 		// Rubber tyre with a tread pattern and a sidewall band.
 		static MaterialTextures Tyre(uint32_t size = 256);
 
+		// Road paint: near-white, slightly worn, and rougher than the asphalt
+		// around it so it catches the light differently at a glancing angle.
+		static MaterialTextures RoadPaint(uint32_t size = 256);
+
 		// Derives a tangent-space normal map from a height field using a Sobel
 		// filter. `strength` scales the slope; 1 is subtle, 4 is pronounced.
 		static Ref<Texture2D> NormalFromHeight(const std::vector<float>& height,

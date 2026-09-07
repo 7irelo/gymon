@@ -60,9 +60,10 @@ private:
 
 	Gymon::ShaderLibrary m_Shaders;
 
-	// The scene renders into this and is displayed as an ImGui image, so it
-	// sits inside a viewport panel instead of behind the whole UI.
-	Gymon::Ref<Gymon::Framebuffer> m_Framebuffer;
+	// The scene renders into the post-processing chain's HDR target and is
+	// displayed as an ImGui image, so it sits inside a viewport panel instead
+	// of behind the whole UI.
+	Gymon::Scope<Gymon::PostProcess> m_Post;
 
 	// Re-rendered every frame. The scene is small enough that caching it
 	// against an unchanged light and unchanged transforms would be more
@@ -76,6 +77,7 @@ private:
 	bool m_ShowGrid = false;
 	bool m_ShowSky = true;
 	float m_Exposure = 1.0f;
+	bool m_Bloom = true;
 
 	// The default split is built once, then imgui.ini takes over so a layout
 	// the user rearranged survives a restart.

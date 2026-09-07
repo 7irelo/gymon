@@ -10,9 +10,11 @@
 //   2. Cook-Torrance specular with GGX distribution, Smith geometry and
 //      Fresnel-Schlick, so highlights vary with roughness the way real
 //      surfaces do instead of being a fixed power.
-//   3. ACES filmic tonemapping, which maps unbounded HDR lighting into
-//      displayable range without the highlight clipping that makes naive
-//      renderers look plasticky.
+//   3. The output is unbounded LINEAR light, not a display colour. Exposure,
+//      bloom and the ACES tonemap all happen once in Composite.glsl. A shader
+//      that tonemaps its own output cannot be blurred, added to, or exposed
+//      correctly afterwards, because the curve has already thrown away
+//      everything above white.
 
 #type vertex
 #version 410 core
@@ -85,12 +87,28 @@ uniform int u_HasShadowMap;
 // Hemispheric ambient. A single flat term makes every shadowed face the same
 // dead grey; taking sky colour from above and bounce colour from below is one
 // texture-free step towards what an environment probe would give.
-uniform vec3 u_SkyColor    = vec3(0.20, 0.36, 0.68);
+uniform vec3 u_SkyColor    = vec3(0.075, 0.185, 0.46);
+uniform vec3 u_HorizonColor = vec3(0.40, 0.50, 0.66);
 uniform vec3 u_GroundColor = vec3(0.16, 0.14, 0.12);
 uniform float u_AmbientIntensity = 0.30;
 
-// Scene exposure in stops, applied before the tonemap curve.
-uniform float u_Exposure = 1.0;
+// The same analytic sky the background pass draws, sampled by direction.
+//
+// This is the cheapest thing that stands in for image-based lighting, and it
+// buys more than it costs: a smooth surface lit by one sun and a constant
+// ambient term has exactly one highlight and reads as matte plastic.
+// Reflecting an actual gradient puts bright sky on a car's upper surfaces and
+// dark ground on its flanks, which is most of what makes paint look painted.
+vec3 SampleSky(vec3 direction)
+{
+	float up = direction.y;
+
+	if (up >= 0.0)
+		return mix(u_HorizonColor, u_SkyColor, pow(clamp(up, 0.0, 1.0), 0.42));
+
+	return mix(u_HorizonColor * 0.45, u_GroundColor, smoothstep(0.0, -0.35, up));
+}
+
 
 const float PI = 3.14159265359;
 
@@ -128,6 +146,12 @@ vec3 FresnelSchlick(float cosTheta, vec3 F0)
 
 // Derives a tangent basis from screen-space derivatives, so normal mapping
 // works without the mesh carrying tangent vectors.
+//
+// Guarded, because the basis is degenerate whenever a primitive has no UV
+// gradient -- a cap fan with one shared texture coordinate, a face collapsed
+// to a line at a grazing angle. normalize() of a zero vector is a NaN, and a
+// NaN written into an HDR target does not stay local: the bloom blur spreads
+// it over a wide rectangle and the composite turns that rectangle black.
 vec3 ApplyNormalMap(vec3 N, vec3 worldPos, vec2 uv)
 {
 	vec3 tangentNormal = texture(u_NormalMap, uv).xyz * 2.0 - 1.0;
@@ -137,7 +161,11 @@ vec3 ApplyNormalMap(vec3 N, vec3 worldPos, vec2 uv)
 	vec2 st1 = dFdx(uv);
 	vec2 st2 = dFdy(uv);
 
-	vec3 T = normalize(Q1 * st2.t - Q2 * st1.t);
+	vec3 tangent = Q1 * st2.t - Q2 * st1.t;
+	if (dot(tangent, tangent) < 1e-12)
+		return N;
+
+	vec3 T = normalize(tangent);
 	vec3 B = -normalize(cross(N, T));
 	return normalize(mat3(T, B, N) * tangentNormal);
 }
@@ -180,14 +208,6 @@ float ShadowFactor(vec3 N, vec3 L)
 	}
 
 	return shadow / 25.0;
-}
-
-// ACES filmic curve, Narkowicz's fit. Cheap, and close enough to the real
-// thing that highlights roll off instead of clipping to white.
-vec3 ACESFilm(vec3 x)
-{
-	const float a = 2.51, b = 0.03, c = 2.43, d = 0.59, e = 0.14;
-	return clamp((x * (a * x + b)) / (x * (c * x + d) + e), 0.0, 1.0);
 }
 
 void main()
@@ -239,20 +259,22 @@ void main()
 
 	vec3 Lo = (kD * albedo / PI + specular) * u_LightColor * NdotL * shadow;
 
-	// Hemispheric ambient, standing in for image-based lighting. Surfaces
-	// facing up pick up sky, surfaces facing down pick up ground bounce.
+	// Diffuse ambient: a hemisphere, because a diffuse surface integrates the
+	// whole sky above it rather than reflecting any one direction of it.
 	vec3 irradiance = mix(u_GroundColor, u_SkyColor, N.y * 0.5 + 0.5) * u_AmbientIntensity;
 
-	// Metals take their ambient through the specular lobe, dielectrics through
-	// diffuse. Without the split, metal in shadow reads as painted plastic.
+	// Specular ambient: the sky in the mirror direction, blended towards that
+	// average as the surface roughens, which is what roughness does to a
+	// reflection.
+	vec3 R = reflect(-V, N);
+	vec3 reflected = mix(SampleSky(R), irradiance, roughness) * u_AmbientIntensity;
+
+	// Metals take their ambient entirely through the specular lobe,
+	// dielectrics mostly through diffuse. Without the split, metal in shadow
+	// reads as painted plastic.
 	vec3 ambientF = FresnelSchlick(max(dot(N, V), 0.0), F0);
-	vec3 ambient = irradiance * (albedo * (1.0 - metallic) * (vec3(1.0) - ambientF)
-	                             + F0 * ambientF * (1.0 - roughness));
+	vec3 ambient = irradiance * albedo * (1.0 - metallic) * (vec3(1.0) - ambientF)
+	             + reflected * (F0 * ambientF + vec3(1.0 - roughness) * 0.04);
 
-	vec3 hdr = (ambient + Lo) * u_Exposure;
-	vec3 mapped = ACESFilm(hdr);
-
-	// Back to sRGB for display. The framebuffer is a plain RGBA8 target, so
-	// this has to be done explicitly rather than relying on GL_FRAMEBUFFER_SRGB.
-	color = vec4(pow(mapped, vec3(1.0 / 2.2)), alpha);
+	color = vec4(ambient + Lo, alpha);
 }

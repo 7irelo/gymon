@@ -178,6 +178,7 @@ namespace Gymon {
 			material->Set("u_LightColor", lightColor);
 			material->Set("u_ViewPosition", camera.GetPosition());
 			material->Set("u_SkyColor", m_Environment.SkyColor);
+			material->Set("u_HorizonColor", m_Environment.HorizonColor);
 			material->Set("u_GroundColor", m_Environment.GroundColor);
 			material->Set("u_AmbientIntensity", m_Environment.AmbientIntensity);
 			material->Set("u_Exposure", m_Environment.Exposure);

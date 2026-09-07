@@ -25,6 +25,10 @@ namespace Gymon {
 		inline void* GetNativeWindow() const override { return m_Window; }
 	private:
 		virtual void Init(const WindowProps& props);
+
+		// Loads the engine mark from assets/branding. Silently does nothing if
+		// the files are missing: an icon is not worth failing to start over.
+		void SetIcon();
 		virtual void Shutdown();
 	private:
 		GLFWwindow* m_Window;

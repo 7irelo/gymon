@@ -24,13 +24,17 @@ void EditorLayer::OnAttach()
 	m_Shaders.Load("assets/shaders/ShadowDepth.glsl");
 	m_Shaders.Load("assets/shaders/Sky.glsl");
 	m_Shaders.Load("assets/shaders/Grid.glsl");
+	m_Shaders.Load("assets/shaders/Bloom.glsl");
+	m_Shaders.Load("assets/shaders/Composite.glsl");
 
 	m_ShadowMap = Gymon::CreateRef<Gymon::ShadowMap>(2048);
 
-	Gymon::FramebufferSpecification fbSpec;
-	fbSpec.Width = 1280;
-	fbSpec.Height = 720;
-	m_Framebuffer = Gymon::Framebuffer::Create(fbSpec);
+	// 4x MSAA. Edge aliasing on a horizon line and on the kerbs is the most
+	// visible artefact left once the shading is right, and multisampling is by
+	// far the cheapest way to remove it here: the scene is a handful of draw
+	// calls, so the extra fill costs almost nothing.
+	m_Post = Gymon::CreateScope<Gymon::PostProcess>(1280, 720,
+		m_Shaders.Get("Bloom"), m_Shaders.Get("Composite"), 4);
 
 	BuildScene();
 	m_Hierarchy.SetContext(m_Scene);
@@ -72,6 +76,7 @@ void EditorLayer::BuildScene()
 	const auto concrete = Gymon::ProceduralTextures::Concrete();
 	const auto paint = Gymon::ProceduralTextures::CarPaint({ 0.62f, 0.045f, 0.05f });
 	const auto rubber = Gymon::ProceduralTextures::Tyre();
+	const auto roadPaint = Gymon::ProceduralTextures::RoadPaint();
 
 	// The scalar factors multiply the maps, so anything supplied by a texture
 	// has its factor set to 1 rather than to a value that would darken it.
@@ -103,6 +108,7 @@ void EditorLayer::BuildScene()
 	addMesh("Kerbs", track.Kerbs, makeMaterial("Kerb", kerb));
 	addMesh("Run-off", track.Verge, makeMaterial("Grass", grass));
 	addMesh("Barriers", track.Barriers, makeMaterial("Concrete", concrete));
+	addMesh("Track Markings", track.Markings, makeMaterial("Road Paint", roadPaint));
 
 	// The infield, big enough to sit under the whole circuit so there is no
 	// void visible through the middle of the loop.
@@ -123,6 +129,17 @@ void EditorLayer::BuildScene()
 
 	auto wheels = addMesh("Car Wheels", car.Wheels, makeMaterial("Tyre", rubber));
 	wheels->Transform = body->Transform;
+
+	// Glass has no texture: it is a single dark, very smooth dielectric, and
+	// giving it an albedo map would only add noise to a surface whose whole
+	// appearance is reflection.
+	auto glassMaterial = Gymon::CreateRef<Gymon::Material>(pbr, "Glass");
+	glassMaterial->Albedo = { 0.035f, 0.040f, 0.048f, 1.0f };
+	glassMaterial->Metallic = 0.0f;
+	glassMaterial->Roughness = 0.06f;
+
+	auto glass = addMesh("Car Glass", car.Glass, glassMaterial);
+	glass->Transform = body->Transform;
 
 	// A chase view of the car on the start-finish straight.
 	m_CameraController.SetYawPitch(-6.0f, -9.0f);
@@ -147,11 +164,11 @@ void EditorLayer::OnUpdate(Gymon::Timestep ts)
 
 	// Resize before rendering, so the first frame at a new size is already
 	// correct rather than a frame of stretched image.
-	const auto& spec = m_Framebuffer->GetSpecification();
 	if (m_ViewportSize.x > 0.0f && m_ViewportSize.y > 0.0f &&
-		(spec.Width != (uint32_t)m_ViewportSize.x || spec.Height != (uint32_t)m_ViewportSize.y))
+		(m_Post->GetWidth() != (uint32_t)m_ViewportSize.x ||
+		 m_Post->GetHeight() != (uint32_t)m_ViewportSize.y))
 	{
-		m_Framebuffer->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
+		m_Post->Resize((uint32_t)m_ViewportSize.x, (uint32_t)m_ViewportSize.y);
 		m_CameraController.OnResize(m_ViewportSize.x, m_ViewportSize.y);
 	}
 
@@ -160,9 +177,10 @@ void EditorLayer::OnUpdate(Gymon::Timestep ts)
 	if (m_ViewportFocused)
 		m_CameraController.OnUpdate(ts);
 
-	m_Framebuffer->Bind();
+	const auto& sceneTarget = m_Post->GetSceneTarget();
+	sceneTarget->Bind();
 
-	Gymon::RenderCommand::SetClearColor({ 0.09f, 0.10f, 0.13f, 1.0f });
+	Gymon::RenderCommand::SetClearColor({ 0.02f, 0.025f, 0.035f, 1.0f });
 	Gymon::RenderCommand::Clear();
 
 	Gymon::Renderer::ResetStats();
@@ -170,14 +188,19 @@ void EditorLayer::OnUpdate(Gymon::Timestep ts)
 	if (m_ShowSky)
 		DrawSky();
 
-	const auto& renderSpec = m_Framebuffer->GetSpecification();
 	m_Scene->OnRender(m_CameraController.GetCamera(), m_ShadowMap,
-		m_Shaders.Get("ShadowDepth"), renderSpec.Width, renderSpec.Height);
+		m_Shaders.Get("ShadowDepth"), m_Post->GetWidth(), m_Post->GetHeight());
 
 	if (m_ShowGrid)
 		DrawGrid();
 
-	m_Framebuffer->Unbind();
+	sceneTarget->Unbind();
+
+	// Exposure now belongs to the composite pass rather than to each surface
+	// shader, so it is set here rather than through the scene's environment.
+	m_Post->Exposure = m_Exposure;
+	m_Post->BloomEnabled = m_Bloom;
+	m_Post->Render();
 }
 
 void EditorLayer::DrawSky()
@@ -329,6 +352,7 @@ void EditorLayer::DrawMenuBar()
 		{
 			ImGui::MenuItem("Grid", nullptr, &m_ShowGrid);
 			ImGui::MenuItem("Sky", nullptr, &m_ShowSky);
+			ImGui::MenuItem("Bloom", nullptr, &m_Bloom);
 			ImGui::Separator();
 			if (ImGui::MenuItem("Reset Layout"))
 				m_ResetLayout = true;
@@ -357,7 +381,7 @@ void EditorLayer::DrawViewport()
 	// GL textures have their origin bottom-left, so the UVs are flipped
 	// vertically to present the image the right way up.
 	ImGui::Image(
-		(ImTextureID)(uintptr_t)m_Framebuffer->GetColorAttachmentRendererID(),
+		(ImTextureID)(uintptr_t)m_Post->GetOutputTexture(),
 		available,
 		ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
 
@@ -535,8 +559,9 @@ void EditorLayer::DrawToolbar()
 
 	ImGui::SameLine();
 	ImGui::SetNextItemWidth(120.0f);
-	if (ImGui::SliderFloat("Exposure", &m_Exposure, 0.2f, 3.0f, "%.2f"))
-		m_Scene->GetEnvironment().Exposure = m_Exposure;
+	ImGui::SliderFloat("Exposure", &m_Exposure, 0.2f, 3.0f, "%.2f");
+	ImGui::SameLine();
+	ImGui::Checkbox("Bloom", &m_Bloom);
 
 	ImGui::Unindent(8.0f);
 	ImGui::Dummy(ImVec2(0.0f, 2.0f));

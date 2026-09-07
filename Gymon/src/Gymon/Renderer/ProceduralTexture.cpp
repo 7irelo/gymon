@@ -447,6 +447,44 @@ namespace Gymon {
 		return result;
 	}
 
+	MaterialTextures ProceduralTextures::RoadPaint(uint32_t size)
+	{
+		ImageBuffer albedo(size, size);
+		std::vector<float> heights((size_t)size * size);
+
+		for (uint32_t y = 0; y < size; y++)
+		{
+			const float v = (float)y / (float)size;
+			for (uint32_t x = 0; x < size; x++)
+			{
+				const float u = (float)x / (float)size;
+
+				const float wear = Noise::FBM(u * 9.0f, v * 9.0f, 9, 5150u, 4);
+				const float grit = Noise::FBM(u * 30.0f, v * 30.0f, 30, 5151u, 2);
+
+				// Worn towards the grey of the road underneath rather than
+				// towards black: paint wears off, it does not darken.
+				glm::vec3 color = Mix(glm::vec3(0.66f, 0.655f, 0.635f),
+					glm::vec3(0.30f, 0.295f, 0.29f), std::pow(Clamp01(wear), 2.2f) * 0.55f);
+
+				heights[(size_t)y * size + x] = grit;
+				albedo.Set(x, y, glm::vec4(color, 1.0f));
+			}
+		}
+
+		MaterialTextures result;
+		result.Albedo = albedo.ToColorTexture();
+		result.Normal = NormalFromHeight(heights, size, size, 0.5f);
+		result.MetallicRoughness = PackMetallicRoughness(size, [](float u, float v, float& r, float& m)
+		{
+			// Thermoplastic road paint has a slight sheen, unlike the asphalt.
+			r = 0.55f;
+			m = 0.0f;
+		});
+
+		return result;
+	}
+
 	MaterialTextures ProceduralTextures::Tyre(uint32_t size)
 	{
 		ImageBuffer albedo(size, size);

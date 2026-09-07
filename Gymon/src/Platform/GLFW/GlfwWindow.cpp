@@ -8,6 +8,9 @@
 #include "Platform/OpenGL/OpenGLContext.h"
 
 #include <GLFW/glfw3.h>
+#include <stb_image.h>
+
+#include <filesystem>
 
 namespace Gymon {
 
@@ -57,6 +60,8 @@ namespace Gymon {
 
 		m_Context = GraphicsContext::Create(m_Window);
 		m_Context->Init();
+
+		SetIcon();
 
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		SetVSync(true);
@@ -162,6 +167,50 @@ namespace Gymon {
 	{
 		glfwPollEvents();
 		m_Context->SwapBuffers();
+	}
+
+	void GlfwWindow::SetIcon()
+	{
+		// Two sizes: Windows picks the 32px one for the taskbar and the 64px
+		// one for Alt-Tab, and letting it downscale a single large image gives
+		// a visibly muddier result than supplying both.
+		const char* paths[] = {
+			"assets/branding/gymon-icon-64.png",
+			"assets/branding/gymon-icon-32.png"
+		};
+
+		GLFWimage images[2];
+		int count = 0;
+
+		for (const char* path : paths)
+		{
+			if (!std::filesystem::exists(path))
+				continue;
+
+			int width = 0, height = 0, channels = 0;
+			// Forced to RGBA: GLFW takes nothing else.
+			stbi_uc* pixels = stbi_load(path, &width, &height, &channels, 4);
+			if (!pixels)
+				continue;
+
+			images[count].width = width;
+			images[count].height = height;
+			images[count].pixels = pixels;
+			count++;
+		}
+
+		if (count == 0)
+		{
+			// Not fatal, and not worth an error: the app runs perfectly well
+			// with the platform's default icon.
+			GY_CORE_WARN("No window icon found under assets/branding");
+			return;
+		}
+
+		glfwSetWindowIcon(m_Window, count, images);
+
+		for (int i = 0; i < count; i++)
+			stbi_image_free(images[i].pixels);
 	}
 
 	void GlfwWindow::SetVSync(bool enabled)
