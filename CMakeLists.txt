@@ -91,6 +91,7 @@ target_include_directories(Gymon PUBLIC
     "Gymon/src"
     "${GY_VENDOR}/spdlog/include"
     "${GY_VENDOR}/glm"
+    "${GY_VENDOR}/json"
     "${GY_VENDOR}"
 )
 

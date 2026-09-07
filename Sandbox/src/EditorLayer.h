@@ -30,6 +30,10 @@ private:
 	void SaveScene();
 	void LoadScene();
 
+	// Loads a glTF file and adds one entity per primitive, so a multi-part
+	// model stays selectable and editable part by part.
+	void ImportModel(const std::string& path);
+
 private:
 	bool m_Active = false;
 

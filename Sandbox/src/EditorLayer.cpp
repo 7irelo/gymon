@@ -147,6 +147,23 @@ void EditorLayer::LoadScene()
 	}
 }
 
+void EditorLayer::ImportModel(const std::string& path)
+{
+	const auto model = Gymon::LoadModel(path);
+	if (!model.Success)
+		return;
+
+	auto lit = m_Shaders.Get("Lit");
+
+	for (const auto& primitive : model.Primitives)
+	{
+		auto entity = m_Scene->CreateEntity(primitive.Name, Gymon::EntityType::Mesh);
+		entity->Mesh = primitive.Mesh;
+		entity->Material = Gymon::CreateRef<Gymon::Material>(lit, primitive.Name + " Material");
+		entity->Material->Albedo = primitive.BaseColor;
+	}
+}
+
 void EditorLayer::DrawMenuBar()
 {
 	if (ImGui::BeginMainMenuBar())
@@ -157,6 +174,9 @@ void EditorLayer::DrawMenuBar()
 				SaveScene();
 			if (ImGui::MenuItem("Load Scene", "Ctrl+O"))
 				LoadScene();
+			ImGui::Separator();
+			if (ImGui::MenuItem("Import glTF Model..."))
+				ImportModel("assets/models/TestScene.gltf");
 			ImGui::EndMenu();
 		}
 		ImGui::EndMainMenuBar();
@@ -207,4 +227,5 @@ void EditorLayer::OnEvent(Gymon::Event& e)
 
 	m_CameraController.OnEvent(e);
 }
+
 

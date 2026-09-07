@@ -17,6 +17,11 @@ inspector and live render statistics:
 
 ![Gymon editor - scene hierarchy, viewport, inspector and statistics](docs/screenshots/editor.png)
 
+Importing a glTF file. Each primitive becomes its own entity, keeping its
+base colour and its baked node transform:
+
+![Gymon editor importing a glTF model](docs/screenshots/gltf-import.png)
+
 ## Features
 
 - **Application / Layer architecture** — overlayable layers with attach,

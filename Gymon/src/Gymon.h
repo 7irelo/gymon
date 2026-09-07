@@ -27,6 +27,7 @@
 #include "Gymon/Renderer/Texture.h"
 #include "Gymon/Renderer/VertexArray.h"
 #include "Gymon/Renderer/Mesh.h"
+#include "Gymon/Renderer/ModelLoader.h"
 #include "Gymon/Renderer/Material.h"
 
 // ------- Scene & Editor ---------
