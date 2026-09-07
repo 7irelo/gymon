@@ -36,6 +36,35 @@ namespace Gymon {
 			glDisable(GL_DEPTH_TEST);
 	}
 
+	void OpenGLRendererAPI::DrawArrays(uint32_t vertexCount)
+	{
+		// Created lazily and never filled: it exists only because a core
+		// profile refuses to draw with no vertex array object bound.
+		if (m_EmptyVAO == 0)
+			glCreateVertexArrays(1, &m_EmptyVAO);
+
+		glBindVertexArray(m_EmptyVAO);
+		glDrawArrays(GL_TRIANGLES, 0, (GLsizei)vertexCount);
+	}
+
+	void OpenGLRendererAPI::SetDepthWrite(bool enabled)
+	{
+		glDepthMask(enabled ? GL_TRUE : GL_FALSE);
+	}
+
+	void OpenGLRendererAPI::SetBlend(bool enabled)
+	{
+		if (enabled)
+		{
+			glEnable(GL_BLEND);
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
+		else
+		{
+			glDisable(GL_BLEND);
+		}
+	}
+
 	void OpenGLRendererAPI::DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount)
 	{
 		vertexArray->Bind();

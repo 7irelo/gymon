@@ -5,6 +5,8 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <limits>
+
 namespace Gymon {
 
 	glm::mat4 TransformComponent::GetTransform() const
@@ -44,13 +46,8 @@ namespace Gymon {
 		return nullptr;
 	}
 
-	void Scene::OnRender(PerspectiveCamera& camera)
+	glm::vec3 Scene::GetLightDirection() const
 	{
-		// One directional light drives the whole scene; the shaders take a
-		// single light direction, so extra lights would be silently ignored.
-		glm::vec3 lightDirection{ -0.5f, -1.0f, -0.3f };
-		glm::vec3 lightColor{ 1.0f, 1.0f, 1.0f };
-
 		for (const auto& entity : m_Entities)
 		{
 			if (entity->Type != EntityType::DirectionalLight || !entity->Visible)
@@ -59,9 +56,97 @@ namespace Gymon {
 			// A directional light has no position, only an orientation, so its
 			// rotation is what matters. -Z is forward.
 			const glm::mat4 rotation = entity->Transform.GetTransform();
-			lightDirection = glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+			return glm::normalize(glm::vec3(rotation * glm::vec4(0.0f, 0.0f, -1.0f, 0.0f)));
+		}
+
+		return glm::normalize(glm::vec3(-0.5f, -1.0f, -0.3f));
+	}
+
+	void Scene::GetBounds(glm::vec3& center, float& radius) const
+	{
+		glm::vec3 min(std::numeric_limits<float>::max());
+		glm::vec3 max(std::numeric_limits<float>::lowest());
+		bool any = false;
+
+		for (const auto& entity : m_Entities)
+		{
+			if (!entity->Visible || entity->Type != EntityType::Mesh || !entity->Mesh)
+				continue;
+
+			const glm::mat4 transform = entity->Transform.GetTransform();
+			const glm::vec3 lo = entity->Mesh->GetBoundsMin();
+			const glm::vec3 hi = entity->Mesh->GetBoundsMax();
+
+			// Transform all eight corners rather than the two extremes: under
+			// rotation the min/max corners do not stay the min/max.
+			for (int i = 0; i < 8; i++)
+			{
+				const glm::vec3 corner(
+					(i & 1) ? hi.x : lo.x,
+					(i & 2) ? hi.y : lo.y,
+					(i & 4) ? hi.z : lo.z);
+
+				const glm::vec3 world = glm::vec3(transform * glm::vec4(corner, 1.0f));
+				min = glm::min(min, world);
+				max = glm::max(max, world);
+				any = true;
+			}
+		}
+
+		if (!any)
+		{
+			center = glm::vec3(0.0f);
+			radius = 1.0f;
+			return;
+		}
+
+		center = (min + max) * 0.5f;
+
+		// Half the diagonal, floored so a single flat plane still gets a frustum
+		// with some depth to it.
+		radius = glm::max(glm::length(max - min) * 0.5f, 0.5f);
+	}
+
+	void Scene::OnRender(PerspectiveCamera& camera, const Ref<ShadowMap>& shadowMap,
+		const Ref<Shader>& depthShader, uint32_t viewportWidth, uint32_t viewportHeight)
+	{
+		// One directional light drives the whole scene; the shaders take a
+		// single light direction, so extra lights would be silently ignored.
+		const glm::vec3 lightDirection = GetLightDirection();
+		glm::vec3 lightColor{ 1.0f, 1.0f, 1.0f };
+
+		for (const auto& entity : m_Entities)
+		{
+			if (entity->Type != EntityType::DirectionalLight || !entity->Visible)
+				continue;
+
 			lightColor = entity->LightColor * entity->LightIntensity;
 			break;
+		}
+
+		const bool castShadows = shadowMap && depthShader && viewportWidth > 0 && viewportHeight > 0;
+
+		if (castShadows)
+		{
+			glm::vec3 center;
+			float radius;
+			GetBounds(center, radius);
+			shadowMap->SetLight(lightDirection, center, radius);
+
+			shadowMap->BeginPass();
+			depthShader->Bind();
+			depthShader->SetMat4("u_LightSpaceMatrix", shadowMap->GetLightSpaceMatrix());
+
+			for (const auto& entity : m_Entities)
+			{
+				if (!entity->Visible || entity->Type != EntityType::Mesh || !entity->Mesh)
+					continue;
+
+				depthShader->SetMat4("u_Transform", entity->Transform.GetTransform());
+				RenderCommand::DrawIndexed(entity->Mesh->GetVertexArray(), entity->Mesh->GetIndexCount());
+			}
+
+			shadowMap->EndPass(viewportWidth, viewportHeight);
 		}
 
 		Renderer::BeginScene(camera);
@@ -77,7 +162,25 @@ namespace Gymon {
 			material->Set("u_LightDirection", lightDirection);
 			material->Set("u_LightColor", lightColor);
 			material->Set("u_ViewPosition", camera.GetPosition());
+			material->Set("u_SkyColor", m_Environment.SkyColor);
+			material->Set("u_GroundColor", m_Environment.GroundColor);
+			material->Set("u_AmbientIntensity", m_Environment.AmbientIntensity);
+			material->Set("u_Exposure", m_Environment.Exposure);
+			material->Set("u_HasShadowMap", castShadows ? 1 : 0);
+
+			if (castShadows)
+			{
+				material->Set("u_LightSpaceMatrix", shadowMap->GetLightSpaceMatrix());
+				// Unit 3; units 0-2 belong to the PBR maps.
+				material->Set("u_ShadowMap", 3);
+			}
+
 			material->Bind();
+
+			// Bound after the material so it cannot be clobbered by a material
+			// that also happens to use unit 3.
+			if (castShadows)
+				shadowMap->Bind(3);
 
 			Renderer::Submit(material->GetShader(), entity->Mesh->GetVertexArray(),
 				entity->Transform.GetTransform(), entity->Mesh->GetIndexCount());

@@ -20,7 +20,10 @@ public:
 	{
 		if (ImGui::BeginMainMenuBar())
 		{
-			if (ImGui::BeginMenu("Scene"))
+			// Named "Demos" rather than "Scene": the editor owns a Scene menu,
+			// and two menus of the same name in one bar is a coin toss for the
+			// user as to which one they get.
+			if (ImGui::BeginMenu("Demos"))
 			{
 				if (ImGui::MenuItem("2D Renderer", nullptr, m_Layer2D->IsActive()))
 				{
@@ -64,6 +67,12 @@ public:
 		Sandbox2D* layer2D = new Sandbox2D();
 		Example3DLayer* layer3D = new Example3DLayer();
 		EditorLayer* editor = new EditorLayer();
+
+		// The editor is what the engine is for, so it is what opens. The two
+		// demo layers stay available from the Scene menu.
+		layer2D->SetActive(false);
+		layer3D->SetActive(false);
+		editor->SetActive(true);
 
 		PushLayer(layer2D);
 		PushLayer(layer3D);

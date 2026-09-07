@@ -32,6 +32,13 @@ namespace Gymon {
 		const char* GetPrimitiveName() const { return m_PrimitiveName; }
 		void SetPrimitiveName(const char* name) { m_PrimitiveName = name; }
 
+		// Local-space axis-aligned bounds, computed once at construction.
+		// Needed to fit a shadow frustum around the scene: without real bounds
+		// the light's orthographic box has to be guessed, and a guess that is
+		// too small clips shadows while one that is too large wastes texels.
+		const glm::vec3& GetBoundsMin() const { return m_BoundsMin; }
+		const glm::vec3& GetBoundsMax() const { return m_BoundsMax; }
+
 		// Built-in primitives
 		static Ref<Mesh> CreateCube();
 		static Ref<Mesh> CreatePlane();
@@ -42,5 +49,8 @@ namespace Gymon {
 		Ref<VertexArray> m_VertexArray;
 		uint32_t m_IndexCount;
 		const char* m_PrimitiveName = "custom";
+
+		glm::vec3 m_BoundsMin{ 0.0f };
+		glm::vec3 m_BoundsMax{ 0.0f };
 	};
 }

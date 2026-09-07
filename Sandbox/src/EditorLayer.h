@@ -23,9 +23,24 @@ public:
 
 private:
 	void BuildScene();
+
+	// Fullscreen passes framing the scene: the sky is drawn first with the
+	// depth test off, the grid last with depth testing on but depth writes
+	// off, so geometry occludes it without it occluding anything.
+	void DrawSky();
+	void DrawGrid();
+
 	void DrawStatsPanel();
 	void DrawViewport();
 	void DrawMenuBar();
+
+	// Hosts every other panel in a fullscreen dockspace and, on first run,
+	// splits it into the standard editor layout.
+	void DrawDockspace();
+	void BuildDefaultLayout(unsigned int dockspaceID);
+
+	// Gizmo mode buttons and display toggles, in a strip under the menu bar.
+	void DrawToolbar();
 
 	void SaveScene();
 	void LoadScene();
@@ -48,6 +63,21 @@ private:
 	// The scene renders into this and is displayed as an ImGui image, so it
 	// sits inside a viewport panel instead of behind the whole UI.
 	Gymon::Ref<Gymon::Framebuffer> m_Framebuffer;
+
+	// Re-rendered every frame. The scene is small enough that caching it
+	// against an unchanged light and unchanged transforms would be more
+	// bookkeeping than the pass costs.
+	Gymon::Ref<Gymon::ShadowMap> m_ShadowMap;
+
+	// Editor display options, surfaced in the toolbar.
+	bool m_ShowGrid = true;
+	bool m_ShowSky = true;
+	float m_Exposure = 1.0f;
+
+	// The default split is built once, then imgui.ini takes over so a layout
+	// the user rearranged survives a restart.
+	bool m_LayoutBuilt = false;
+	bool m_ResetLayout = false;
 	glm::vec2 m_ViewportSize{ 0.0f, 0.0f };
 	bool m_ViewportFocused = false;
 	bool m_ViewportHovered = false;

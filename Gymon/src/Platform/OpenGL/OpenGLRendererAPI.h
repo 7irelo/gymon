@@ -16,5 +16,11 @@ namespace Gymon {
 		virtual void SetDepthTest(bool enabled) override;
 
 		virtual void DrawIndexed(const Ref<VertexArray>& vertexArray, uint32_t indexCount = 0) override;
+		virtual void DrawArrays(uint32_t vertexCount) override;
+
+		virtual void SetDepthWrite(bool enabled) override;
+		virtual void SetBlend(bool enabled) override;
+	private:
+		uint32_t m_EmptyVAO = 0;
 	};
 }

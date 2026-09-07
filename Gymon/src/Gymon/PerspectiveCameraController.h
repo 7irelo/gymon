@@ -21,6 +21,19 @@ namespace Gymon {
 
 		PerspectiveCamera& GetCamera() { return m_Camera; }
 		const PerspectiveCamera& GetCamera() const { return m_Camera; }
+
+		// The controller owns the camera's position and orientation and
+		// rewrites them every update, so setting them on the camera directly
+		// has no lasting effect. These are the ones that stick.
+		void SetPosition(const glm::vec3& position);
+		void SetYawPitch(float yaw, float pitch);
+
+		const glm::vec3& GetPosition() const { return m_CameraPosition; }
+
+		// Pulls the camera back far enough to fit a sphere of the given radius
+		// in view, keeping the current viewing angle. The editor equivalent of
+		// "frame selection".
+		void Focus(const glm::vec3& target, float radius);
 	private:
 		bool OnMouseScrolled(MouseScrolledEvent& e);
 		bool OnWindowResized(WindowResizeEvent& e);

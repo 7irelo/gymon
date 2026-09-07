@@ -1,6 +1,7 @@
 ﻿#include "EditorLayer.h"
 
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <ImGuizmo.h>
 
 #include <filesystem>
@@ -18,6 +19,11 @@ void EditorLayer::OnAttach()
 	// ShaderLibrary::ReloadChanged() can watch and recompile.
 	m_Shaders.Load("assets/shaders/Lit.glsl");
 	m_Shaders.Load("assets/shaders/PBR.glsl");
+	m_Shaders.Load("assets/shaders/ShadowDepth.glsl");
+	m_Shaders.Load("assets/shaders/Sky.glsl");
+	m_Shaders.Load("assets/shaders/Grid.glsl");
+
+	m_ShadowMap = Gymon::CreateRef<Gymon::ShadowMap>(2048);
 
 	Gymon::FramebufferSpecification fbSpec;
 	fbSpec.Width = 1280;
@@ -27,7 +33,10 @@ void EditorLayer::OnAttach()
 	BuildScene();
 	m_Hierarchy.SetContext(m_Scene);
 
-	m_CameraController.GetCamera().SetPosition({ 0.0f, 3.5f, 9.0f });
+	// Set through the controller: it owns the position and rewrites the
+	// camera's every update, so setting the camera directly would not stick.
+	m_CameraController.SetYawPitch(-108.0f, -14.0f);
+	m_CameraController.SetPosition({ 4.5f, 3.2f, 8.5f });
 }
 
 void EditorLayer::BuildScene()
@@ -105,15 +114,78 @@ void EditorLayer::OnUpdate(Gymon::Timestep ts)
 	Gymon::RenderCommand::Clear();
 
 	Gymon::Renderer::ResetStats();
-	m_Scene->OnRender(m_CameraController.GetCamera());
+
+	if (m_ShowSky)
+		DrawSky();
+
+	const auto& renderSpec = m_Framebuffer->GetSpecification();
+	m_Scene->OnRender(m_CameraController.GetCamera(), m_ShadowMap,
+		m_Shaders.Get("ShadowDepth"), renderSpec.Width, renderSpec.Height);
+
+	if (m_ShowGrid)
+		DrawGrid();
 
 	m_Framebuffer->Unbind();
 }
 
+void EditorLayer::DrawSky()
+{
+	auto shader = m_Shaders.Get("Sky");
+	if (!shader)
+		return;
+
+	const auto& camera = m_CameraController.GetCamera();
+
+	// Depth writes off as well as the test: the sky must not fill the depth
+	// buffer, or every subsequent draw would be rejected.
+	Gymon::RenderCommand::SetDepthTest(false);
+	Gymon::RenderCommand::SetDepthWrite(false);
+
+	shader->Bind();
+	shader->SetMat4("u_InverseViewProjection", glm::inverse(camera.GetViewProjectionMatrix()));
+	shader->SetFloat3("u_CameraPosition", camera.GetPosition());
+	shader->SetFloat3("u_LightDirection", m_Scene->GetLightDirection());
+	shader->SetFloat3("u_LightColor", glm::vec3(1.0f, 0.96f, 0.9f));
+
+	const auto& environment = m_Scene->GetEnvironment();
+	shader->SetFloat3("u_SkyColor", environment.SkyColor);
+	shader->SetFloat3("u_HorizonColor", environment.HorizonColor);
+	shader->SetFloat3("u_GroundColor", environment.GroundColor);
+	shader->SetFloat("u_Exposure", environment.Exposure);
+
+	Gymon::RenderCommand::DrawArrays(3);
+
+	Gymon::RenderCommand::SetDepthWrite(true);
+	Gymon::RenderCommand::SetDepthTest(true);
+}
+
+void EditorLayer::DrawGrid()
+{
+	auto shader = m_Shaders.Get("Grid");
+	if (!shader)
+		return;
+
+	const auto& camera = m_CameraController.GetCamera();
+	const glm::mat4 viewProjection = camera.GetViewProjectionMatrix();
+
+	// Blended, and writing no depth: the grid is an overlay on the world, not
+	// part of it, so it must not occlude anything drawn after it.
+	Gymon::RenderCommand::SetBlend(true);
+	Gymon::RenderCommand::SetDepthWrite(false);
+
+	shader->Bind();
+	shader->SetMat4("u_ViewProjection", viewProjection);
+	shader->SetMat4("u_InverseViewProjection", glm::inverse(viewProjection));
+	shader->SetFloat3("u_CameraPosition", camera.GetPosition());
+
+	Gymon::RenderCommand::DrawArrays(3);
+
+	Gymon::RenderCommand::SetDepthWrite(true);
+	Gymon::RenderCommand::SetBlend(false);
+}
+
 void EditorLayer::DrawStatsPanel()
 {
-	ImGui::SetNextWindowPos(ImVec2(20.0f, 380.0f), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(260.0f, 240.0f), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Statistics");
 
 	const auto stats = Gymon::Renderer::GetStats();
@@ -200,6 +272,17 @@ void EditorLayer::DrawMenuBar()
 				ImportModel("assets/models/TestScene.gltf");
 			ImGui::EndMenu();
 		}
+
+		if (ImGui::BeginMenu("View"))
+		{
+			ImGui::MenuItem("Grid", nullptr, &m_ShowGrid);
+			ImGui::MenuItem("Sky", nullptr, &m_ShowSky);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Reset Layout"))
+				m_ResetLayout = true;
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndMainMenuBar();
 	}
 }
@@ -208,8 +291,6 @@ void EditorLayer::DrawViewport()
 {
 	// No padding: the image should meet the panel edges like a real viewport.
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-	ImGui::SetNextWindowPos(ImVec2(300.0f, 40.0f), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(660.0f, 460.0f), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Viewport");
 
 	m_ViewportFocused = ImGui::IsWindowFocused();
@@ -277,11 +358,138 @@ void EditorLayer::OnImGuiRender()
 	// started before anything tries to draw a gizmo.
 	ImGuizmo::BeginFrame();
 
-	DrawMenuBar();
+	// Opens the host window, draws the menu bar and toolbar into it, and
+	// declares the dockspace every other panel docks into.
+	DrawDockspace();
+
 	m_Hierarchy.OnImGuiRender();
 	m_Inspector.OnImGuiRender(m_Scene, m_Hierarchy.GetSelected());
 	DrawStatsPanel();
 	DrawViewport();
+
+	// Ends the dockspace host window opened by DrawDockspace.
+	ImGui::End();
+}
+
+void EditorLayer::DrawDockspace()
+{
+	// A borderless, immovable window covering the whole main viewport. Every
+	// panel docks into it, which is what turns a set of floating windows into
+	// an editor.
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::SetNextWindowPos(viewport->WorkPos);
+	ImGui::SetNextWindowSize(viewport->WorkSize);
+	ImGui::SetNextWindowViewport(viewport->ID);
+
+	ImGuiWindowFlags flags =
+		ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar |
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize |
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus |
+		ImGuiWindowFlags_NoNavFocus;
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+	ImGui::Begin("##Dockspace", nullptr, flags);
+	ImGui::PopStyleVar(3);
+
+	DrawMenuBar();
+	DrawToolbar();
+
+	const ImGuiID dockspaceID = ImGui::GetID("GymonDockspace");
+
+	// Only lay panels out when there is nothing to restore. Once imgui.ini
+	// has a layout, that is the user's arrangement, and overwriting it on
+	// every launch would be hostile.
+	if (!m_LayoutBuilt || m_ResetLayout)
+	{
+		if (m_ResetLayout || ImGui::DockBuilderGetNode(dockspaceID) == nullptr)
+			BuildDefaultLayout(dockspaceID);
+
+		m_LayoutBuilt = true;
+		m_ResetLayout = false;
+	}
+
+	ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_None);
+}
+
+void EditorLayer::BuildDefaultLayout(unsigned int dockspaceID)
+{
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+	ImGui::DockBuilderRemoveNode(dockspaceID);
+	ImGui::DockBuilderAddNode(dockspaceID, ImGuiDockNodeFlags_DockSpace);
+	ImGui::DockBuilderSetNodeSize(dockspaceID, viewport->WorkSize);
+
+	// Split off the sides first and the bottom last, so the outer columns run
+	// the full height of the window the way they do in Unreal and Unity.
+	ImGuiID centre = dockspaceID;
+	const ImGuiID left = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Left, 0.19f, nullptr, &centre);
+	const ImGuiID right = ImGui::DockBuilderSplitNode(centre, ImGuiDir_Right, 0.24f, nullptr, &centre);
+
+	// Both halves are captured: splitting turns `left` into a parent node, so
+	// docking a window into it afterwards would silently do nothing.
+	ImGuiID leftTop = left;
+	const ImGuiID leftBottom = ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.42f, nullptr, &leftTop);
+
+	ImGui::DockBuilderDockWindow("Scene Hierarchy", leftTop);
+	ImGui::DockBuilderDockWindow("Statistics", leftBottom);
+	ImGui::DockBuilderDockWindow("Inspector", right);
+	ImGui::DockBuilderDockWindow("Viewport", centre);
+
+	ImGui::DockBuilderFinish(dockspaceID);
+}
+
+void EditorLayer::DrawToolbar()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 4.0f));
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(10.0f, 5.0f));
+	ImGui::Dummy(ImVec2(0.0f, 1.0f));
+	ImGui::Indent(8.0f);
+
+	struct Tool { const char* label; int operation; const char* tip; };
+	const Tool tools[] = {
+		{ "Select",    -1,                         "Q - no gizmo" },
+		{ "Move",      (int)ImGuizmo::TRANSLATE,   "W - translate" },
+		{ "Rotate",    (int)ImGuizmo::ROTATE,      "E - rotate" },
+		{ "Scale",     (int)ImGuizmo::SCALE,       "R - scale" }
+	};
+
+	for (int i = 0; i < IM_ARRAYSIZE(tools); i++)
+	{
+		if (i > 0)
+			ImGui::SameLine();
+
+		const bool active = m_GizmoOperation == tools[i].operation;
+		if (active)
+			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+		if (ImGui::Button(tools[i].label))
+			m_GizmoOperation = tools[i].operation;
+
+		if (active)
+			ImGui::PopStyleColor();
+
+		if (ImGui::IsItemHovered())
+			ImGui::SetTooltip("%s", tools[i].tip);
+	}
+
+	ImGui::SameLine();
+	ImGui::TextUnformatted("|");
+	ImGui::SameLine();
+	ImGui::Checkbox("Grid", &m_ShowGrid);
+	ImGui::SameLine();
+	ImGui::Checkbox("Sky", &m_ShowSky);
+
+	ImGui::SameLine();
+	ImGui::SetNextItemWidth(120.0f);
+	if (ImGui::SliderFloat("Exposure", &m_Exposure, 0.2f, 3.0f, "%.2f"))
+		m_Scene->GetEnvironment().Exposure = m_Exposure;
+
+	ImGui::Unindent(8.0f);
+	ImGui::Dummy(ImVec2(0.0f, 2.0f));
+	ImGui::Separator();
+	ImGui::PopStyleVar(2);
 }
 
 void EditorLayer::OnEvent(Gymon::Event& e)

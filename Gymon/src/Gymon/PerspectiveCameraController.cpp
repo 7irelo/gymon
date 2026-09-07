@@ -16,6 +16,34 @@ namespace Gymon {
 		m_Camera.SetYawPitch(m_Yaw, m_Pitch);
 	}
 
+	void PerspectiveCameraController::SetPosition(const glm::vec3& position)
+	{
+		m_CameraPosition = position;
+		m_Camera.SetPosition(position);
+	}
+
+	void PerspectiveCameraController::SetYawPitch(float yaw, float pitch)
+	{
+		m_Yaw = yaw;
+		// Same clamp the mouse look applies: past vertical the view flips.
+		m_Pitch = glm::clamp(pitch, -89.0f, 89.0f);
+		m_Camera.SetYawPitch(m_Yaw, m_Pitch);
+	}
+
+	void PerspectiveCameraController::Focus(const glm::vec3& target, float radius)
+	{
+		// Distance at which a sphere of this radius fills the vertical field
+		// of view, with a little margin so it does not touch the edges.
+		const float distance = (radius / std::tan(glm::radians(m_Fov * 0.5f))) * 1.3f;
+
+		const glm::vec3 forward = glm::normalize(glm::vec3(
+			std::cos(glm::radians(m_Yaw)) * std::cos(glm::radians(m_Pitch)),
+			std::sin(glm::radians(m_Pitch)),
+			std::sin(glm::radians(m_Yaw)) * std::cos(glm::radians(m_Pitch))));
+
+		SetPosition(target - forward * distance);
+	}
+
 	void PerspectiveCameraController::OnUpdate(Timestep ts)
 	{
 		float velocity = m_MoveSpeed * ts;

@@ -4,6 +4,7 @@
 #include "Gymon/Renderer/Material.h"
 #include "Gymon/Renderer/Mesh.h"
 #include "Gymon/Renderer/PerspectiveCamera.h"
+#include "Gymon/Renderer/ShadowMap.h"
 
 #include <glm/glm.hpp>
 
@@ -67,6 +68,22 @@ namespace Gymon {
 		uint32_t m_ID;
 	};
 
+	// Everything about the scene that is not an entity: the sky the ambient
+	// term is derived from, and the exposure the tonemapper uses.
+	//
+	// Kept on the Scene rather than on each material because it describes the
+	// world, not a surface -- and because the sky pass and the surface shading
+	// must agree on it or lit objects will not sit in their background.
+	struct Environment
+	{
+		glm::vec3 SkyColor{ 0.20f, 0.36f, 0.68f };
+		glm::vec3 HorizonColor{ 0.62f, 0.71f, 0.84f };
+		glm::vec3 GroundColor{ 0.16f, 0.14f, 0.12f };
+
+		float AmbientIntensity = 0.30f;
+		float Exposure = 1.0f;
+	};
+
 	class Scene
 	{
 	public:
@@ -82,13 +99,32 @@ namespace Gymon {
 
 		const std::vector<Ref<Entity>>& GetEntities() const { return m_Entities; }
 
+		Environment& GetEnvironment() { return m_Environment; }
+		const Environment& GetEnvironment() const { return m_Environment; }
+
 		// Draws every visible mesh entity. Lighting uniforms come from the
 		// first directional light in the scene, if there is one.
-		void OnRender(PerspectiveCamera& camera);
+		//
+		// When a shadow map and depth shader are supplied, a depth pass runs
+		// first and the resulting map is bound for the main pass.
+		void OnRender(PerspectiveCamera& camera,
+			const Ref<ShadowMap>& shadowMap = nullptr,
+			const Ref<Shader>& depthShader = nullptr,
+			uint32_t viewportWidth = 0, uint32_t viewportHeight = 0);
+
+		// World-space bounding sphere of everything visible, used to fit the
+		// shadow frustum. Returns a unit sphere at the origin for an empty
+		// scene so callers never have to special-case that.
+		void GetBounds(glm::vec3& center, float& radius) const;
+
+		// Direction the first enabled directional light points, or a sensible
+		// default when the scene has none.
+		glm::vec3 GetLightDirection() const;
 
 	private:
 		std::string m_Name;
 		std::vector<Ref<Entity>> m_Entities;
+		Environment m_Environment;
 
 		// Monotonic, so an id is never reused and a stale selection resolves to
 		// nothing rather than to a different entity.

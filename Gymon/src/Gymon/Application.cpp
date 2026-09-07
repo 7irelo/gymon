@@ -4,6 +4,7 @@
 #include "Gymon/Log.h"
 #include "Gymon/Input.h"
 #include "Gymon/Renderer/Renderer.h"
+#include "Gymon/Utils/Screenshot.h"
 
 #include <GLFW/glfw3.h>
 
@@ -81,6 +82,12 @@ namespace Gymon {
 		return false;
 	}
 
+	CommandLineOptions& Application::Options()
+	{
+		static CommandLineOptions s_Options;
+		return s_Options;
+	}
+
 	void Application::Run()
 	{
 		while (m_Running)
@@ -100,6 +107,19 @@ namespace Gymon {
 				layer->OnImGuiRender();
 			m_ImGuiLayer->End();
 
+			// Read back before the swap: afterwards the back buffer's contents
+			// are undefined and the capture would be garbage or blank.
+			const auto& options = Options();
+			if (!options.ScreenshotPath.empty() && m_FrameCount == options.ScreenshotFrame)
+			{
+				CaptureFramebuffer(options.ScreenshotPath,
+					m_Window->GetWidth(), m_Window->GetHeight());
+
+				if (options.ExitAfterScreenshot)
+					m_Running = false;
+			}
+
+			m_FrameCount++;
 			m_Window->OnUpdate();
 		}
 	}

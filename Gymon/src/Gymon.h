@@ -23,6 +23,7 @@
 
 #include "Gymon/Renderer/Buffer.h"
 #include "Gymon/Renderer/Framebuffer.h"
+#include "Gymon/Renderer/ShadowMap.h"
 #include "Gymon/Renderer/Shader.h"
 #include "Gymon/Renderer/Texture.h"
 #include "Gymon/Renderer/VertexArray.h"

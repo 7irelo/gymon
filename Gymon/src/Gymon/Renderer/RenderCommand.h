@@ -36,6 +36,21 @@ namespace Gymon {
 		{
 			s_RendererAPI->DrawIndexed(vertexArray, indexCount);
 		}
+
+		static void DrawArrays(uint32_t vertexCount)
+		{
+			s_RendererAPI->DrawArrays(vertexCount);
+		}
+
+		static void SetDepthWrite(bool enabled)
+		{
+			s_RendererAPI->SetDepthWrite(enabled);
+		}
+
+		static void SetBlend(bool enabled)
+		{
+			s_RendererAPI->SetBlend(enabled);
+		}
 	private:
 		static Scope<RendererAPI> s_RendererAPI;
 	};

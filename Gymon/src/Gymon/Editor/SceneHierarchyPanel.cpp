@@ -111,8 +111,8 @@ namespace Gymon {
 	{
 		// Laid out like an editor on first run: hierarchy left, inspector
 		// right. FirstUseEver so a user's own arrangement survives restarts.
-		ImGui::SetNextWindowPos(ImVec2(20.0f, 40.0f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(260.0f, 320.0f), ImGuiCond_FirstUseEver);
+		// No explicit position or size: this panel is docked by the editor's
+		// dockspace, and setting either would fight the dock node for control.
 		ImGui::Begin("Scene Hierarchy");
 
 		if (m_Scene)
@@ -156,8 +156,6 @@ namespace Gymon {
 
 	void PropertiesPanel::OnImGuiRender(const Ref<Scene>& scene, const Ref<Entity>& entity)
 	{
-		ImGui::SetNextWindowPos(ImVec2(980.0f, 40.0f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(280.0f, 460.0f), ImGuiCond_FirstUseEver);
 		ImGui::Begin("Inspector");
 
 		if (!entity)
