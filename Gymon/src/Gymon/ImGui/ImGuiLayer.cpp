@@ -7,6 +7,8 @@
 
 #include "Gymon/Application.h"
 
+#include <filesystem>
+
 // TEMPORARY
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
@@ -28,7 +30,9 @@ namespace Gymon {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		ImGui::StyleColorsDark();
+		LoadFonts();
 		SetDarkThemeColors();
+		SetStyle();
 
 		Application& app = Application::Get();
 		GLFWwindow* window = static_cast<GLFWwindow*>(app.GetWindow().GetNativeWindow());
@@ -70,6 +74,113 @@ namespace Gymon {
 		// Rendering
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
+
+	namespace {
+
+		// Candidate UI fonts, best first. A bundled font wins so a project can
+		// ship its own look; otherwise a platform font is used. Nothing is
+		// redistributed by the engine, which keeps font licensing out of it.
+		const char* s_UIFontCandidates[] = {
+			"assets/fonts/Inter-Regular.ttf",
+			"assets/fonts/Roboto-Regular.ttf",
+	#ifdef GY_PLATFORM_WINDOWS
+			"C:/Windows/Fonts/segoeui.ttf",
+			"C:/Windows/Fonts/arial.ttf",
+	#elif defined(GY_PLATFORM_MACOS)
+			"/System/Library/Fonts/SFNS.ttf",
+			"/Library/Fonts/Arial.ttf",
+	#else
+			"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+			"/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+	#endif
+		};
+
+		// A monospaced face for anything columnar -- stats, log output, code.
+		const char* s_MonoFontCandidates[] = {
+			"assets/fonts/JetBrainsMono-Regular.ttf",
+	#ifdef GY_PLATFORM_WINDOWS
+			"C:/Windows/Fonts/CascadiaMono.ttf",
+			"C:/Windows/Fonts/consola.ttf",
+	#elif defined(GY_PLATFORM_MACOS)
+			"/System/Library/Fonts/Menlo.ttc",
+	#else
+			"/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+	#endif
+		};
+
+		ImFont* TryLoadFirst(ImGuiIO& io, const char* const* candidates, size_t count, float sizePx)
+		{
+			for (size_t i = 0; i < count; i++)
+			{
+				if (!std::filesystem::exists(candidates[i]))
+					continue;
+
+				if (ImFont* font = io.Fonts->AddFontFromFileTTF(candidates[i], sizePx))
+				{
+					GY_CORE_INFO("Loaded font '{0}' at {1}px", candidates[i], sizePx);
+					return font;
+				}
+			}
+			return nullptr;
+		}
+	}
+
+	void ImGuiLayer::LoadFonts()
+	{
+		ImGuiIO& io = ImGui::GetIO();
+
+		// ImGui's built-in font is a 13px bitmap face that cannot scale and
+		// looks dated on a modern display. A hinted TTF at 17px is the single
+		// cheapest change to how the editor reads.
+		const float uiSize = 17.0f;
+		const float monoSize = 15.0f;
+
+		ImFont* ui = TryLoadFirst(io, s_UIFontCandidates,
+			sizeof(s_UIFontCandidates) / sizeof(s_UIFontCandidates[0]), uiSize);
+
+		m_MonoFont = TryLoadFirst(io, s_MonoFontCandidates,
+			sizeof(s_MonoFontCandidates) / sizeof(s_MonoFontCandidates[0]), monoSize);
+
+		if (ui)
+			io.FontDefault = ui;
+		else
+			GY_CORE_WARN("No UI font found; falling back to the ImGui built-in face");
+	}
+
+	void ImGuiLayer::SetStyle()
+	{
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		// Rounded, roomier, and with visible separation between panels. The
+		// defaults are tuned for a debug overlay, not for an editor someone
+		// looks at for hours.
+		style.WindowRounding    = 6.0f;
+		style.ChildRounding     = 6.0f;
+		style.FrameRounding     = 4.0f;
+		style.PopupRounding     = 6.0f;
+		style.ScrollbarRounding = 8.0f;
+		style.GrabRounding      = 4.0f;
+		style.TabRounding       = 4.0f;
+
+		style.WindowPadding     = ImVec2(10.0f, 10.0f);
+		style.FramePadding      = ImVec2(8.0f, 5.0f);
+		style.ItemSpacing       = ImVec2(8.0f, 7.0f);
+		style.ItemInnerSpacing  = ImVec2(6.0f, 5.0f);
+		style.IndentSpacing     = 20.0f;
+		style.ScrollbarSize     = 12.0f;
+		style.GrabMinSize       = 10.0f;
+
+		style.WindowBorderSize  = 1.0f;
+		style.FrameBorderSize   = 0.0f;
+		style.PopupBorderSize   = 1.0f;
+
+		style.WindowTitleAlign  = ImVec2(0.0f, 0.5f);
+		style.WindowMenuButtonPosition = ImGuiDir_None;   // no collapse arrow
+
+		// Curves and edges look wrong without enough segments at this scale.
+		style.CircleTessellationMaxError = 0.15f;
+		style.CurveTessellationTol = 0.8f;
 	}
 
 	void ImGuiLayer::SetDarkThemeColors()

@@ -98,7 +98,8 @@ namespace Gymon {
 						{ "name",      entity->Material->GetName() },
 						{ "shader",    entity->Material->GetShader() ? entity->Material->GetShader()->GetName() : "" },
 						{ "albedo",    ToJson(entity->Material->Albedo) },
-						{ "shininess", entity->Material->Shininess }
+						{ "metallic",  entity->Material->Metallic },
+						{ "roughness", entity->Material->Roughness }
 					};
 				}
 			}
@@ -188,7 +189,8 @@ namespace Gymon {
 
 					auto material = CreateRef<Material>(shader, m.value("name", std::string("Material")));
 					material->Albedo = Vec4From(m.value("albedo", json{}), { 1.0f, 1.0f, 1.0f, 1.0f });
-					material->Shininess = m.value("shininess", 32.0f);
+					material->Metallic = m.value("metallic", 0.0f);
+					material->Roughness = m.value("roughness", 0.5f);
 					entity->Material = material;
 				}
 			}

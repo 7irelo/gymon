@@ -2,6 +2,7 @@
 
 #include "Gymon/Core.h"
 #include "Gymon/Renderer/Mesh.h"
+#include "Gymon/Renderer/Texture.h"
 
 #include <glm/glm.hpp>
 
@@ -18,9 +19,18 @@ namespace Gymon {
 		std::string Name;
 		Ref<Mesh> Mesh;
 
-		// glTF pbrMetallicRoughness baseColorFactor. The engine's shading is
-		// Blinn-Phong rather than PBR, so this is used as the albedo tint and
-		// the metallic/roughness terms are ignored.
+		// glTF pbrMetallicRoughness maps. Null when the material does not
+		// supply one, in which case the shader falls back to the scalar
+		// factors below.
+		Ref<Texture2D> AlbedoMap;
+		Ref<Texture2D> NormalMap;
+		Ref<Texture2D> MetallicRoughnessMap;
+
+		float Metallic = 0.0f;
+		float Roughness = 0.9f;
+
+		// glTF pbrMetallicRoughness baseColorFactor, used as an albedo tint and
+		// multiplied with AlbedoMap when both are present.
 		glm::vec4 BaseColor{ 1.0f, 1.0f, 1.0f, 1.0f };
 	};
 
@@ -33,10 +43,11 @@ namespace Gymon {
 
 	// Loads a .gltf or .glb file.
 	//
-	// Geometry only: positions, normals, texture coordinates and indices, with
-	// each node's world transform baked into its vertices so the result needs
-	// no scene-graph support to draw correctly. Textures are not loaded yet;
-	// materials come through as their base colour factor.
+	// Positions, normals, texture coordinates and indices, with each node's
+	// world transform baked into its vertices so the result needs no
+	// scene-graph support to draw correctly. Base colour, normal and
+	// metallic-roughness textures are decoded and uploaded, including images
+	// embedded in a .glb.
 	//
 	// Never throws. On failure the returned model has Success == false and an
 	// Error describing why, so a bad asset cannot take the editor down.

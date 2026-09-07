@@ -21,11 +21,12 @@ namespace Gymon {
 
 		m_Shader->Bind();
 
-		// The two properties every material has, whether or not the shader
+		// The properties every material has, whether or not a given shader
 		// declares them. Setting a uniform a shader does not use is a no-op in
 		// GL, so this stays safe across shaders.
-		m_Shader->SetFloat4("u_Color", Albedo);
-		m_Shader->SetFloat("u_Shininess", Shininess);
+		m_Shader->SetFloat4("u_Albedo", Albedo);
+		m_Shader->SetFloat("u_Metallic", Metallic);
+		m_Shader->SetFloat("u_Roughness", Roughness);
 
 		for (const auto& [name, value] : m_Uniforms)
 		{
@@ -47,10 +48,26 @@ namespace Gymon {
 			}, value);
 		}
 
-		if (m_Texture)
+		// Fixed sampler units, with a presence flag each so the shader can skip
+		// a fetch rather than sampling an unbound unit (which reads black and
+		// would make every untextured object render black).
+		BindMap(AlbedoMap, 0, "u_AlbedoMap", "u_HasAlbedoMap");
+		BindMap(NormalMap, 1, "u_NormalMap", "u_HasNormalMap");
+		BindMap(MetallicRoughnessMap, 2, "u_MetallicRoughnessMap", "u_HasMetallicRoughnessMap");
+	}
+
+	void Material::BindMap(const Ref<Texture2D>& map, uint32_t slot,
+		const char* samplerName, const char* presenceName) const
+	{
+		if (map)
 		{
-			m_Texture->Bind(0);
-			m_Shader->SetInt("u_Texture", 0);
+			map->Bind(slot);
+			m_Shader->SetInt(samplerName, static_cast<int>(slot));
+			m_Shader->SetInt(presenceName, 1);
+		}
+		else
+		{
+			m_Shader->SetInt(presenceName, 0);
 		}
 	}
 }

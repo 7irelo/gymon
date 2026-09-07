@@ -17,6 +17,7 @@ void EditorLayer::OnAttach()
 	// Loaded from disk on purpose: a file-backed shader is what
 	// ShaderLibrary::ReloadChanged() can watch and recompile.
 	m_Shaders.Load("assets/shaders/Lit.glsl");
+	m_Shaders.Load("assets/shaders/PBR.glsl");
 
 	Gymon::FramebufferSpecification fbSpec;
 	fbSpec.Width = 1280;
@@ -33,7 +34,7 @@ void EditorLayer::BuildScene()
 {
 	m_Scene = Gymon::CreateRef<Gymon::Scene>("Scene");
 
-	auto lit = m_Shaders.Get("Lit");
+	auto lit = m_Shaders.Get("PBR");
 
 	auto camera = m_Scene->CreateEntity("Camera", Gymon::EntityType::Camera);
 	camera->Transform.Translation = { 3.0f, 2.5f, 6.0f };
@@ -46,20 +47,24 @@ void EditorLayer::BuildScene()
 	cube->Mesh = Gymon::Mesh::CreateCube();
 	cube->Material = Gymon::CreateRef<Gymon::Material>(lit, "Cube Material");
 	cube->Material->Albedo = { 0.85f, 0.35f, 0.30f, 1.0f };
+	cube->Material->Roughness = 0.55f;
 	cube->Transform.Translation = { -1.4f, 0.5f, 0.0f };
 
 	auto sphere = m_Scene->CreateEntity("Sphere", Gymon::EntityType::Mesh);
 	sphere->Mesh = Gymon::Mesh::CreateSphere();
 	sphere->Material = Gymon::CreateRef<Gymon::Material>(lit, "Sphere Material");
-	sphere->Material->Albedo = { 0.35f, 0.55f, 0.9f, 1.0f };
-	sphere->Material->Shininess = 96.0f;
+	sphere->Material->Albedo = { 0.94f, 0.78f, 0.35f, 1.0f };
+	// Polished gold: metals tint their reflection with albedo and have no
+	// diffuse term, which is the clearest demonstration of the BRDF.
+	sphere->Material->Metallic = 1.0f;
+	sphere->Material->Roughness = 0.18f;
 	sphere->Transform.Translation = { 1.4f, 0.5f, 0.0f };
 
 	auto plane = m_Scene->CreateEntity("Plane", Gymon::EntityType::Mesh);
 	plane->Mesh = Gymon::Mesh::CreatePlane();
 	plane->Material = Gymon::CreateRef<Gymon::Material>(lit, "Ground Material");
-	plane->Material->Albedo = { 0.55f, 0.55f, 0.58f, 1.0f };
-	plane->Material->Shininess = 8.0f;
+	plane->Material->Albedo = { 0.42f, 0.44f, 0.47f, 1.0f };
+	plane->Material->Roughness = 0.85f;
 	plane->Transform.Scale = { 12.0f, 1.0f, 12.0f };
 }
 
@@ -156,7 +161,7 @@ void EditorLayer::ImportModel(const std::string& path)
 	if (!model.Success)
 		return;
 
-	auto lit = m_Shaders.Get("Lit");
+	auto lit = m_Shaders.Get("PBR");
 
 	for (const auto& primitive : model.Primitives)
 	{

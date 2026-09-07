@@ -217,14 +217,21 @@ namespace Gymon {
 				ImGui::TextDisabled("Shader: %s",
 					entity->Material->GetShader() ? entity->Material->GetShader()->GetName().c_str() : "none");
 				ImGui::ColorEdit4("Albedo", &entity->Material->Albedo.x);
-				ImGui::DragFloat("Shininess", &entity->Material->Shininess, 1.0f, 1.0f, 256.0f);
+				ImGui::SliderFloat("Metallic", &entity->Material->Metallic, 0.0f, 1.0f);
+				ImGui::SliderFloat("Roughness", &entity->Material->Roughness, 0.0f, 1.0f);
 
-				if (const auto& texture = entity->Material->GetTexture())
+				auto describeMap = [](const char* label, const Gymon::Ref<Gymon::Texture2D>& map)
 				{
-					ImGui::TextDisabled("Texture: %ux%u, %u mip%s",
-						texture->GetWidth(), texture->GetHeight(),
-						texture->GetMipLevels(), texture->GetMipLevels() == 1 ? "" : "s");
-				}
+					if (map)
+						ImGui::TextDisabled("%s: %ux%u, %u mip%s", label,
+							map->GetWidth(), map->GetHeight(),
+							map->GetMipLevels(), map->GetMipLevels() == 1 ? "" : "s");
+					else
+						ImGui::TextDisabled("%s: none", label);
+				};
+				describeMap("Albedo map", entity->Material->AlbedoMap);
+				describeMap("Normal map", entity->Material->NormalMap);
+				describeMap("Metal/Rough", entity->Material->MetallicRoughnessMap);
 			}
 			else
 			{

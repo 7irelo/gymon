@@ -43,23 +43,36 @@ namespace Gymon {
 
 		const std::unordered_map<std::string, Value>& GetUniforms() const { return m_Uniforms; }
 
-		// Bound to texture unit 0 and exposed to the shader as u_Texture.
-		void SetTexture(const Ref<Texture2D>& texture) { m_Texture = texture; }
-		const Ref<Texture2D>& GetTexture() const { return m_Texture; }
+		// PBR metallic-roughness maps, bound to fixed units so the shader can
+		// declare them without the material having to know sampler locations:
+		// 0 albedo, 1 normal, 2 metallic-roughness.
+		//
+		// Any of these may be null, in which case the shader falls back to the
+		// scalar factors below. A "has map" boolean is uploaded per slot so the
+		// shader branches on presence rather than sampling a dummy texture.
+		Ref<Texture2D> AlbedoMap;
+		Ref<Texture2D> NormalMap;
+		Ref<Texture2D> MetallicRoughnessMap;
 
-		// Common properties, surfaced directly so the inspector has something
-		// meaningful to show for every material regardless of its shader.
+		// Surfaced directly so the inspector has something meaningful to show
+		// for every material regardless of which shader it uses.
 		glm::vec4 Albedo{ 1.0f, 1.0f, 1.0f, 1.0f };
-		float Shininess = 32.0f;
+
+		// glTF metallic-roughness convention: metallic is effectively binary
+		// for real materials, roughness runs smooth (0) to rough (1).
+		float Metallic = 0.0f;
+		float Roughness = 0.5f;
 
 		// Binds the shader, uploads Albedo/Shininess and every stored uniform,
 		// and binds the texture if there is one.
 		void Bind() const;
 
 	private:
+		void BindMap(const Ref<Texture2D>& map, uint32_t slot,
+			const char* samplerName, const char* presenceName) const;
+
 		std::string m_Name;
 		Ref<Shader> m_Shader;
-		Ref<Texture2D> m_Texture;
 		std::unordered_map<std::string, Value> m_Uniforms;
 	};
 }

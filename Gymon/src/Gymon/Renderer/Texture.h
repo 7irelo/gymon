@@ -35,6 +35,14 @@ namespace Gymon {
 		// Allocates a full mip chain and generates it after upload. Worth it
 		// for anything minified in 3D; pointless for screen-space 2D sprites.
 		bool GenerateMips = false;
+
+		// Stores the texture as sRGB so the GPU linearises it on every fetch.
+		//
+		// Colour textures (albedo, emissive) are authored in sRGB and must be
+		// converted to linear before any lighting maths, or everything comes
+		// out washed out. Data textures -- normal maps, metallic-roughness,
+		// masks -- hold raw numbers, not colours, and must stay untouched.
+		bool SRGB = false;
 	};
 
 	class Texture

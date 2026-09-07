@@ -1,13 +1,14 @@
 #include "gypch.h"
 #include "Gymon/Renderer/ModelLoader.h"
 
-// Geometry only for now. Disabling tinygltf's image codecs avoids pulling a
-// second STB_IMAGE_IMPLEMENTATION into the build alongside the engine's own
-// stb_image.cpp, which would be a duplicate-symbol link error.
+// tinygltf decodes images with stb_image, and so does the engine. Including
+// stb_image.h here and telling tinygltf not to include it again means both
+// share the single implementation in stb_image.cpp, instead of tinygltf
+// emitting a second one and failing to link on duplicate symbols.
 #define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#define TINYGLTF_NO_EXTERNAL_IMAGE
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE
+#include <stb_image.h>
 #include <tinygltf/tiny_gltf.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -78,6 +79,64 @@ namespace Gymon {
 			}
 
 			return transform;
+		}
+
+		// Uploads a decoded glTF image. tinygltf has already turned the source
+		// (external file, data URI, or a chunk inside a .glb) into raw pixels,
+		// so this only has to get them onto the GPU.
+		//
+		// sRGB matters here: albedo maps are authored in sRGB and must be
+		// linearised before lighting, while normal and metallic-roughness maps
+		// hold raw numbers and must not be.
+		Ref<Texture2D> UploadImage(const tinygltf::Model& model, int textureIndex, bool srgb)
+		{
+			if (textureIndex < 0 || textureIndex >= static_cast<int>(model.textures.size()))
+				return nullptr;
+
+			const int source = model.textures[textureIndex].source;
+			if (source < 0 || source >= static_cast<int>(model.images.size()))
+				return nullptr;
+
+			const auto& image = model.images[source];
+			if (image.width <= 0 || image.height <= 0 || image.image.empty())
+				return nullptr;
+
+			TextureSpecification spec;
+			spec.MinFilter = TextureFilter::Linear;
+			spec.MagFilter = TextureFilter::Linear;
+			spec.GenerateMips = true;   // model textures are minified constantly
+			spec.SRGB = srgb;
+
+			auto texture = Texture2D::Create(
+				static_cast<uint32_t>(image.width), static_cast<uint32_t>(image.height), spec);
+
+			// tinygltf gives 8-bit RGB or RGBA. The engine's texture storage is
+			// RGBA8, so a 3-component image is expanded rather than uploaded
+			// with a mismatched row length.
+			if (image.component == 4)
+			{
+				texture->SetData(const_cast<unsigned char*>(image.image.data()),
+					static_cast<uint32_t>(image.image.size()));
+			}
+			else if (image.component == 3)
+			{
+				std::vector<unsigned char> rgba(static_cast<size_t>(image.width) * image.height * 4);
+				for (size_t i = 0, n = static_cast<size_t>(image.width) * image.height; i < n; i++)
+				{
+					rgba[i * 4 + 0] = image.image[i * 3 + 0];
+					rgba[i * 4 + 1] = image.image[i * 3 + 1];
+					rgba[i * 4 + 2] = image.image[i * 3 + 2];
+					rgba[i * 4 + 3] = 255;
+				}
+				texture->SetData(rgba.data(), static_cast<uint32_t>(rgba.size()));
+			}
+			else
+			{
+				GY_CORE_WARN("Unsupported glTF image with {0} components", image.component);
+				return nullptr;
+			}
+
+			return texture;
 		}
 
 		void LoadPrimitive(const tinygltf::Model& model, const tinygltf::Primitive& primitive,
@@ -190,14 +249,23 @@ namespace Gymon {
 
 			if (primitive.material >= 0 && primitive.material < static_cast<int>(model.materials.size()))
 			{
-				const auto& factor = model.materials[primitive.material].pbrMetallicRoughness.baseColorFactor;
-				if (factor.size() == 4)
+				const auto& material = model.materials[primitive.material];
+				const auto& pbr = material.pbrMetallicRoughness;
+
+				if (pbr.baseColorFactor.size() == 4)
 				{
 					loaded.BaseColor = {
-						static_cast<float>(factor[0]), static_cast<float>(factor[1]),
-						static_cast<float>(factor[2]), static_cast<float>(factor[3])
+						static_cast<float>(pbr.baseColorFactor[0]), static_cast<float>(pbr.baseColorFactor[1]),
+						static_cast<float>(pbr.baseColorFactor[2]), static_cast<float>(pbr.baseColorFactor[3])
 					};
 				}
+
+				loaded.Metallic = static_cast<float>(pbr.metallicFactor);
+				loaded.Roughness = static_cast<float>(pbr.roughnessFactor);
+
+				loaded.AlbedoMap = UploadImage(model, pbr.baseColorTexture.index, true);
+				loaded.MetallicRoughnessMap = UploadImage(model, pbr.metallicRoughnessTexture.index, false);
+				loaded.NormalMap = UploadImage(model, material.normalTexture.index, false);
 			}
 
 			out.Primitives.push_back(std::move(loaded));
